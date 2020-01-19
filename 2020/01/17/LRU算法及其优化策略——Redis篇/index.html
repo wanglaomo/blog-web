@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+
+  <!-- PACE Progress Bar START -->
+  
+    <script src="https://raw.githubusercontent.com/HubSpot/pace/v1.0.2/pace.min.js"></script>
+    <link rel="stylesheet" href="https://github.com/HubSpot/pace/raw/master/themes/orange/pace-theme-flash.css">
+  
+  
+
+  <!-- PACE Progress Bar START -->
+
+  
+  <title>lru算法及其优化策略——算法篇 | 王老魔的代码备忘录</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  
+  <meta name="keywords" content="算法redis">
+  
+  
+  
+  
+  <meta name="description" content="LRU算法及其优化策略——Redis篇 在上一篇文章中，分享了一些LRU基本算法及优化策略，本篇继续该主题，分享在Redis中LRU算法的使用和优化。">
+<meta name="keywords" content="算法,redis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LRU算法及其优化策略——算法篇">
+<meta property="og:url" content="http://yoursite.com/2020/01/17/LRU算法及其优化策略——Redis篇/index.html">
+<meta property="og:site_name" content="王老魔的代码备忘录">
+<meta property="og:description" content="LRU算法及其优化策略——Redis篇 在上一篇文章中，分享了一些LRU基本算法及优化策略，本篇继续该主题，分享在Redis中LRU算法的使用和优化。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://i.loli.net/2020/01/17/kG9Fn41PrI2ubvY.jpg">
+<meta property="og:image" content="https://i.loli.net/2020/01/17/Db3esfj48HCPga6.png">
+<meta property="og:updated_time" content="2020-01-19T08:56:55.588Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LRU算法及其优化策略——算法篇">
+<meta name="twitter:description" content="LRU算法及其优化策略——Redis篇 在上一篇文章中，分享了一些LRU基本算法及优化策略，本篇继续该主题，分享在Redis中LRU算法的使用和优化。">
+<meta name="twitter:image" content="https://i.loli.net/2020/01/17/kG9Fn41PrI2ubvY.jpg">
+  
+    <link rel="alternate" href="/atom.xml" title="王老魔的代码备忘录" type="application/atom+xml">
+  
+  <link rel="icon" href="/css/images/favicon.jpg">
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Montserrat:700" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,300,300italic,400italic" rel="stylesheet" type="text/css">
+  <link href="https://cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet">
+  <style type="text/css">
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/9749f0/00000000000000000001008f/27/l?subset_id=2&fvd=n5) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/90cf9f/000000000000000000010091/27/l?subset_id=2&fvd=n7) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/8a5494/000000000000000000013365/27/l?subset_id=2&fvd=n4) format("woff2");font-weight:lighter;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/d337d8/000000000000000000010095/27/l?subset_id=2&fvd=i4) format("woff2");font-weight:400;font-style:italic;}</style>
+    
+  <link rel="stylesheet" id="athemes-headings-fonts-css" href="//fonts.googleapis.com/css?family=Yanone+Kaffeesatz%3A200%2C300%2C400%2C700&amp;ver=4.6.1" type="text/css" media="all">
+  <link rel="stylesheet" href="/css/style.css">
+
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/hiero.css">
+  <link rel="stylesheet" href="/css/glyphs.css">
+  
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/my.css">
+  <!-- Google Adsense -->
+  
+</head>
+</html>
+<script>
+var themeMenus = {};
+
+  themeMenus["/"] = "首页"; 
+
+  themeMenus["/archives"] = "归档"; 
+
+  themeMenus["/categories"] = "分类"; 
+
+  themeMenus["/tags"] = "标签"; 
+
+</script>
+
+
+  <body data-spy="scroll" data-target="#toc" data-offset="50">
+
+
+  <header id="allheader" class="site-header" role="banner">
+  <div class="clearfix container">
+      <div class="site-branding">
+
+          <h1 class="site-title">
+            
+              <a href="/" title="王老魔的代码备忘录" rel="home"> 王老魔的代码备忘录 </a>
+            
+          </h1>
+
+          
+            <div class="site-description">严肃的技术博客</div>
+          
+            
+          <nav id="main-navigation" class="main-navigation" role="navigation">
+            <a class="nav-open">Menu</a>
+            <a class="nav-close">Close</a>
+            <div class="clearfix sf-menu">
+
+              <ul id="main-nav" class="nmenu sf-js-enabled">
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/">首页</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/archives">归档</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/categories">分类</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/tags">标签</a> </li>
+                    
+              </ul>
+            </div>
+          </nav>
+
+
+      </div>
+  </div>
+</header>
+
+
+  <div id="originBgDiv" style="background: #fff; width: 100%;">
+
+      <div style="max-height:600px; overflow: hidden;  display: flex; display: -webkit-flex; align-items: center;">
+        <img id="originBg" width="100%" alt src>
+      </div>
+
+  </div>
+
+  <script>
+  function setAboutIMG(){
+      var imgUrls = "css/images/pose.jpg,https://source.unsplash.com/collection/954550/1920x1080".split(",");
+      var random = Math.floor((Math.random() * imgUrls.length ));
+      if (imgUrls[random].startsWith('http') || imgUrls[random].indexOf('://') >= 0) {
+        document.getElementById("originBg").src=imgUrls[random];
+      } else {
+        document.getElementById("originBg").src='/' + imgUrls[random];
+      }
+  }
+  bgDiv=document.getElementById("originBgDiv");
+  if(location.pathname.match('about')){
+    setAboutIMG();
+    bgDiv.style.display='block';
+  }else{
+    bgDiv.style.display='none';
+  }
+  </script>
+
+
+
+  <div id="container">
+    <div id="wrap">
+            
+      <div id="content" class="outer">
+        
+          <section id="main" style="float:none;"><article id="post-LRU算法及其优化策略——Redis篇" style="width: 66%; float:left;" class="article article-type-post" itemscope itemprop="blogPost">
+  <div id="articleInner" class="clearfix post-1016 post type-post status-publish format-standard has-post-thumbnail hentry category-template-2 category-uncategorized tag-codex tag-edge-case tag-featured-image tag-image tag-template">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="thumb" itemprop="name">
+      LRU算法及其优化策略——算法篇
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-meta">
+      
+	Posted on <a href="/2020/01/17/LRU算法及其优化策略——Redis篇/" class="article-date">
+	  <time datetime="2020-01-17T08:34:00.000Z" itemprop="datePublished">一月 17, 2020</time>
+	</a>
+
+      
+	<span id="busuanzi_container_page_pv">
+	  本文总阅读量<span id="busuanzi_value_page_pv"></span>次
+	</span>
+
+    </div>
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="LRU算法及其优化策略——Redis篇"><a href="#LRU算法及其优化策略——Redis篇" class="headerlink" title="LRU算法及其优化策略——Redis篇"></a>LRU算法及其优化策略——Redis篇</h2><p><img src="https://i.loli.net/2020/01/17/kG9Fn41PrI2ubvY.jpg" alt="LRU算法及其优化策略——Redis篇 .jpg"></p>
+<p>在<a href="https://juejin.im/post/5e2023e0f265da3df12042b3" target="_blank" rel="noopener">上一篇文章</a>中，分享了一些LRU基本算法及优化策略，本篇继续该主题，分享在Redis中LRU算法的使用和优化。<br><a id="more"></a> </p>
+<h2 id="Redis-内存回收策略"><a href="#Redis-内存回收策略" class="headerlink" title="Redis 内存回收策略"></a>Redis 内存回收策略</h2><p>在介绍Redis的LRU使用之前，我们需要先要了解一下Redis的内存回收策略。</p>
+<p>Redis作为一个高性能的内存型的KV数据库，势必需要一个机制来控制Redis的内存占用，避免内存溢出。而和内存占用限制有关的配置即为<code>maxmemory</code>这个参数，通过动态调整该参数即可动态地限制Redis的内存占用。</p>
+<p>Redis内存回收策略分为两个方面：</p>
+<ul>
+<li>删除过期键</li>
+<li>回收策略</li>
+</ul>
+<h3 id="删除过期键"><a href="#删除过期键" class="headerlink" title="删除过期键"></a>删除过期键</h3><p>Redis通过两种手段删除过期键：</p>
+<ol>
+<li><p>惰性删除</p>
+<p>对于有过期时间的键，会在键上附加一个过期时间的时间戳，当客户端访问到该键时，会先检查过期时间戳，如果该键值已过期，则返回空，并删除该键。使用惰性删除可以避免维护过期时间的链表，但是如果一个过期键一直没有被访问，则有内存泄漏的问题。</p>
+</li>
+<li><p>定时任务删除</p>
+<p>为了避免惰性删除造成的内存泄漏，Redis会启动一个定时任务，默认为10s运行一次，该定时任务会随机从数据库中选取一些键并删除其中过期的键，如果发现其中超过25%的键都已过期，则重复执行一次该定时任务，直至随机扫描到的一批键中，过期键值的占比小于25%。</p>
+</li>
+</ol>
+<h3 id="回收策略"><a href="#回收策略" class="headerlink" title="回收策略"></a>回收策略</h3><p>当Redis的内存占用超过配置值时，就会执行驱逐政策，按照一定的规则驱逐旧数据，Redis可以配置六种回收策略：</p>
+<ol>
+<li><strong>noeviction</strong>：拒绝所有的写入操作并返回Error，对读取操作没有影响。</li>
+<li><strong>allkeys-lru</strong>：对所有的键执行LRU算法。</li>
+<li><strong>volatile-lru</strong>：对所有有过期时间的键执行LRU算法。</li>
+<li><strong>allkeys-random</strong>：对所有的键随机驱逐。</li>
+<li><strong>volatile-random</strong>：对有过期时间的键随机驱逐。</li>
+<li><strong>volatile-ttl</strong>：驱逐最快要过期的数据。</li>
+</ol>
+<p>可以根据具体应用的数据访问方式及配合<code>info</code>命令计算出的缓存命中率来选择合适的驱逐策略。</p>
+<p>我们可以看到有两条驱逐策略是和LRU相关的，而且Redis对LRU算法进行了一些优化。</p>
+<h2 id="近似LRU算法"><a href="#近似LRU算法" class="headerlink" title="近似LRU算法"></a>近似LRU算法</h2><h3 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h3><p>Redis 使用了一种基于采样的近似LRU算法来替代普通的LRU算法，从而避免普通的LRU算法带来的过高的资源消耗，而像Redis这样的程序，并不需要驱逐精确的那个最久没有访问的键。</p>
+<p>简述：Redis随机采样一小部分键值，并选中其中最久没有访问的键，然后淘汰。</p>
+<p>可以通过<code>maxmemory-samples</code>参数来配置每次采样的键数量，一般来说该值配置为5，当该值为10时就和普通的LRU算法的回收结果很接近，但是也会带来相应的资源消耗。Redis官网中有下面这么一个测试结果：</p>
+<p><img src="https://i.loli.net/2020/01/17/Db3esfj48HCPga6.png" alt="LRU测试.png"></p>
+<ul>
+<li>浅灰色：被回收的数据</li>
+<li>深灰色：还没有被回收的数据</li>
+<li>绿色：最新插入的数据</li>
+</ul>
+<p>左上角是普通的LRU的回收结果，因为只会插入和访问一次，所以就是按照先来后到的顺序，将旧数据依次的淘汰了。因为Redis3.0增加了一个驱逐池，所以可以看到3.0的回收效果要好与2.8的版本。而且可以看到，提高采样数量也能提高回收效果。</p>
+<h3 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h3><h4 id="1-LRU时钟"><a href="#1-LRU时钟" class="headerlink" title="1. LRU时钟"></a>1. LRU时钟</h4><p>Redis中有一个全局的LRU时钟<strong>lruclock</strong>，该时钟记录了自服务启动后的LRU时间，并且该时钟每100ms更新一次。当客户端创建或访问键值时，都会根据这个全局的时钟更新键值自身的LRU时钟。</p>
+<p>如此相当于每个键值都有一个访问时间的记录。</p>
+<h4 id="2-执行回收策略的判断"><a href="#2-执行回收策略的判断" class="headerlink" title="2. 执行回收策略的判断"></a>2. 执行回收策略的判断</h4><p> 在插入数据时，会先判断是否有足够的容量，如果没有，则执行回收策略，驱逐旧数据。此处我们指定为LRU相关的回收策略。</p>
+<h4 id="3-驱逐池"><a href="#3-驱逐池" class="headerlink" title="3. 驱逐池"></a>3. 驱逐池</h4><p>一个驱逐池中的Entry的结构如下图所示：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> REDIS_EVICTION_POOL_SIZE 16</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">evictionPoolEntry</span> &#123;</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">long</span> idle;    <span class="comment">/* Object idle time. */</span></span><br><span class="line">    sds key;                    <span class="comment">/* Key name. */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>其中idle即为空闲时间，key即为键值，空闲时间就是按照上面的LRU时钟计算的。驱逐池就是以Entry的idle为顺序组成组成的数组，一共有16个Entry。</p>
+<p>当需要在驱逐池中插入一个键时，首先需要<strong>填充驱逐池</strong>，按照配置的采样参数从数据库中随机挑选几个键值，然后依次执行下面的操作。</p>
+<p>该键值会依次比较驱逐池中寻找该键空闲时间大的键值：</p>
+<ul>
+<li>如果没有找到这样的键值，且驱逐池没有空位，则代表该插入的键值是空闲时间最小的键，所以该键并没有接入驱逐池的必要，所以直接跳过。</li>
+<li>如果找到了这样的键值，且驱逐池有空位，则直接插入到已有键值之前，以前的Entry移位。</li>
+<li>如果找到了这样的键值，而驱逐池没有空位，则在驱逐池中剔除掉空闲时间最小的键值后插入。</li>
+</ul>
+<p>然后就到了真正<strong>删除键</strong>的逻辑了：</p>
+<p>在驱逐池中，依次从空闲时间最长的键值开始删除，直到有足够的数据空间。</p>
+<p>对这部分感兴趣的道友，可以去看下Redis的源码，主要是<code>freeMemoryIfNeeded()方法</code>和<code>evictionPoolPopulate()方法</code>。</p>
+<p><a href="https://github.com/antirez/redis/blob/17bf0b25c1171486e3a1b089f3181fff2bc0d4f0/src/evict.c#L446" target="_blank" rel="noopener">源码地址</a></p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本文介绍了Redis的内存回收策略及Redis近似LRU算法的原理和实现。从Redis对LRU算法的优化中，我们可以发现一个好的设计，并不是说要有多么准确，有时候可以在准确性和性能之间做权衡，以满足自己真正想要实现的功能。</p>
+
+      
+    </div>
+    <footer class="entry-meta entry-footer">
+      
+	<span class="ico-folder"></span>
+    <a class="article-category-link" href="/categories/redis/">redis</a>
+
+      
+  <span class="ico-tags"></span>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/算法/">算法</a></li></ul>
+
+      
+            
+      
+        
+	<div id="comment">
+		<!-- 来必力City版安装代码 -->
+		<div id="lv-container" data-id="city" data-uid="MTAyMC8yOTQ4MS82MDQ5">
+		<script type="text/javascript">
+		   (function(d, s) {
+		       var j, e = d.getElementsByTagName(s)[0];
+
+		       if (typeof LivereTower === 'function') { return; }
+
+		       j = d.createElement(s);
+		       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+		       j.async = true;
+
+		       e.parentNode.insertBefore(j, e);
+		   })(document, 'script');
+		</script>
+		<noscript>为正常使用来必力评论功能请激活JavaScript</noscript>
+		</div>
+		<!-- City版安装代码已完成 -->
+	</div>
+
+
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/01/19/Dubbo服务暴露源码分析/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">上一篇</strong>
+      <div class="article-nav-title">
+        
+          (no title)
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/01/16/LRU算法及其优化策略——算法篇/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">下一篇</strong>
+      <div class="article-nav-title">LRU算法及其优化策略——算法篇</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+<!-- Table of Contents -->
+
+  <aside id="sidebar">
+    <div id="toc" class="toc-article" style="overflow-y: scroll; max-width: 28%;">
+    <strong class="toc-title">文章目录</strong>
+    
+      <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#LRU算法及其优化策略——Redis篇"><span class="nav-number">1.</span> <span class="nav-text">LRU算法及其优化策略——Redis篇</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Redis-内存回收策略"><span class="nav-number">2.</span> <span class="nav-text">Redis 内存回收策略</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#删除过期键"><span class="nav-number">2.1.</span> <span class="nav-text">删除过期键</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#回收策略"><span class="nav-number">2.2.</span> <span class="nav-text">回收策略</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#近似LRU算法"><span class="nav-number">3.</span> <span class="nav-text">近似LRU算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#原理"><span class="nav-number">3.1.</span> <span class="nav-text">原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#实现"><span class="nav-number">3.2.</span> <span class="nav-text">实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-LRU时钟"><span class="nav-number">3.2.1.</span> <span class="nav-text">1. LRU时钟</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-执行回收策略的判断"><span class="nav-number">3.2.2.</span> <span class="nav-text">2. 执行回收策略的判断</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-驱逐池"><span class="nav-number">3.2.3.</span> <span class="nav-text">3. 驱逐池</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol>
+    
+    </div>
+  </aside>
+</section>
+        
+      </div>
+      <footer id="footer" class="site-footer">
+  
+
+  <div class="clearfix container">
+      <div class="site-info">
+	      &copy; 2020 王老魔的代码备忘录 All Rights Reserved.
+          
+            <span id="busuanzi_container_site_uv">
+              本站访客数<span id="busuanzi_value_site_uv"></span>人次  
+              本站总访问量<span id="busuanzi_value_site_pv"></span>次
+            </span>
+          
+      </div>
+      <div class="site-credit">
+        Theme by <a href="https://github.com/iTimeTraveler/hexo-theme-hiero" target="_blank">hiero</a>
+      </div>
+  </div>
+</footer>
+
+
+<!-- min height -->
+
+<script>
+    var contentdiv = document.getElementById("content");
+
+    contentdiv.style.minHeight = document.body.offsetHeight - document.getElementById("allheader").offsetHeight - document.getElementById("footer").offsetHeight + "px";
+</script>
+
+<!-- Custome JS -->
+<script src="/js/my.js"></script>
+    </div>
+    <!-- <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">home</a>
+  
+    <a href="/archives" class="mobile-nav-link">archives</a>
+  
+    <a href="/categories" class="mobile-nav-link">categories</a>
+  
+    <a href="/tags" class="mobile-nav-link">tags</a>
+  
+</nav> -->
+    
+
+<!-- mathjax config similar to math.stackexchange -->
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.js"></script>
+
+
+<script src="/js/scripts.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="/js/main.js"></script>
+
+
+
+
+
+
+
+  <div style="display: none;">
+    <script src="https://s95.cnzz.com/z_stat.php?id=1260716016&web_id=1260716016" language="JavaScript"></script>
+  </div>
+
+
+
+	<script async src="https://dnqof95d40fo6.cloudfront.net/atw7f8.js">
+	</script>
+
+
+
+
+
+
+  </div>
+
+  <a id="rocket" href="#top" class=""></a>
+  <script type="text/javascript" src="/js/totop.js" async=""></script>
+</body>
+</html>

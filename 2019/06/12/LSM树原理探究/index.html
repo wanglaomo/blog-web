@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+
+  <!-- PACE Progress Bar START -->
+  
+    <script src="https://raw.githubusercontent.com/HubSpot/pace/v1.0.2/pace.min.js"></script>
+    <link rel="stylesheet" href="https://github.com/HubSpot/pace/raw/master/themes/orange/pace-theme-flash.css">
+  
+  
+
+  <!-- PACE Progress Bar START -->
+
+  
+  <title>lsm树原理探究 | 王老魔的代码备忘录</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  
+  <meta name="keywords" content="数据结构后端">
+  
+  
+  
+  
+  <meta name="description" content="前言B+树随着mysql Innodb引擎的广泛推广越来越被大家所熟知，而前不久我在研究Raft算法时，偶然发现了一种和B+树类似的数据结构——LSM树（Log-Structured-Merge-Tree 日志结构合并树），它是Google发表的论文 Big Table 中提到的一种很有趣的文件组织数据结构， 现如今已经被运用在很多工业界的产品之中了：HBase、Cassandra、LevelD">
+<meta name="keywords" content="数据结构,后端">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LSM树原理探究">
+<meta property="og:url" content="http://yoursite.com/2019/06/12/LSM树原理探究/index.html">
+<meta property="og:site_name" content="王老魔的代码备忘录">
+<meta property="og:description" content="前言B+树随着mysql Innodb引擎的广泛推广越来越被大家所熟知，而前不久我在研究Raft算法时，偶然发现了一种和B+树类似的数据结构——LSM树（Log-Structured-Merge-Tree 日志结构合并树），它是Google发表的论文 Big Table 中提到的一种很有趣的文件组织数据结构， 现如今已经被运用在很多工业界的产品之中了：HBase、Cassandra、LevelD">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://i.loli.net/2019/06/09/5cfca61335e5199804.jpg">
+<meta property="og:image" content="https://i.loli.net/2019/06/09/5cfcb121ba24596367.jpg">
+<meta property="og:image" content="https://i.loli.net/2019/06/09/5cfd1cb7376fd57856.png">
+<meta property="og:image" content="https://i.loli.net/2019/06/11/5cffcd98abc3f22233.jpg">
+<meta property="og:updated_time" content="2019-12-10T14:11:17.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LSM树原理探究">
+<meta name="twitter:description" content="前言B+树随着mysql Innodb引擎的广泛推广越来越被大家所熟知，而前不久我在研究Raft算法时，偶然发现了一种和B+树类似的数据结构——LSM树（Log-Structured-Merge-Tree 日志结构合并树），它是Google发表的论文 Big Table 中提到的一种很有趣的文件组织数据结构， 现如今已经被运用在很多工业界的产品之中了：HBase、Cassandra、LevelD">
+<meta name="twitter:image" content="https://i.loli.net/2019/06/09/5cfca61335e5199804.jpg">
+  
+    <link rel="alternate" href="/atom.xml" title="王老魔的代码备忘录" type="application/atom+xml">
+  
+  <link rel="icon" href="/css/images/favicon.jpg">
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Montserrat:700" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,300,300italic,400italic" rel="stylesheet" type="text/css">
+  <link href="https://cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet">
+  <style type="text/css">
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/9749f0/00000000000000000001008f/27/l?subset_id=2&fvd=n5) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/90cf9f/000000000000000000010091/27/l?subset_id=2&fvd=n7) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/8a5494/000000000000000000013365/27/l?subset_id=2&fvd=n4) format("woff2");font-weight:lighter;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/d337d8/000000000000000000010095/27/l?subset_id=2&fvd=i4) format("woff2");font-weight:400;font-style:italic;}</style>
+    
+  <link rel="stylesheet" id="athemes-headings-fonts-css" href="//fonts.googleapis.com/css?family=Yanone+Kaffeesatz%3A200%2C300%2C400%2C700&amp;ver=4.6.1" type="text/css" media="all">
+  <link rel="stylesheet" href="/css/style.css">
+
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/hiero.css">
+  <link rel="stylesheet" href="/css/glyphs.css">
+  
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/my.css">
+  <!-- Google Adsense -->
+  
+</head>
+</html>
+<script>
+var themeMenus = {};
+
+  themeMenus["/"] = "首页"; 
+
+  themeMenus["/archives"] = "归档"; 
+
+  themeMenus["/categories"] = "分类"; 
+
+  themeMenus["/tags"] = "标签"; 
+
+</script>
+
+
+  <body data-spy="scroll" data-target="#toc" data-offset="50">
+
+
+  <header id="allheader" class="site-header" role="banner">
+  <div class="clearfix container">
+      <div class="site-branding">
+
+          <h1 class="site-title">
+            
+              <a href="/" title="王老魔的代码备忘录" rel="home"> 王老魔的代码备忘录 </a>
+            
+          </h1>
+
+          
+            <div class="site-description">严肃的技术博客</div>
+          
+            
+          <nav id="main-navigation" class="main-navigation" role="navigation">
+            <a class="nav-open">Menu</a>
+            <a class="nav-close">Close</a>
+            <div class="clearfix sf-menu">
+
+              <ul id="main-nav" class="nmenu sf-js-enabled">
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/">首页</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/archives">归档</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/categories">分类</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/tags">标签</a> </li>
+                    
+              </ul>
+            </div>
+          </nav>
+
+
+      </div>
+  </div>
+</header>
+
+
+  <div id="originBgDiv" style="background: #fff; width: 100%;">
+
+      <div style="max-height:600px; overflow: hidden;  display: flex; display: -webkit-flex; align-items: center;">
+        <img id="originBg" width="100%" alt src>
+      </div>
+
+  </div>
+
+  <script>
+  function setAboutIMG(){
+      var imgUrls = "css/images/pose.jpg,https://source.unsplash.com/collection/954550/1920x1080".split(",");
+      var random = Math.floor((Math.random() * imgUrls.length ));
+      if (imgUrls[random].startsWith('http') || imgUrls[random].indexOf('://') >= 0) {
+        document.getElementById("originBg").src=imgUrls[random];
+      } else {
+        document.getElementById("originBg").src='/' + imgUrls[random];
+      }
+  }
+  bgDiv=document.getElementById("originBgDiv");
+  if(location.pathname.match('about')){
+    setAboutIMG();
+    bgDiv.style.display='block';
+  }else{
+    bgDiv.style.display='none';
+  }
+  </script>
+
+
+
+  <div id="container">
+    <div id="wrap">
+            
+      <div id="content" class="outer">
+        
+          <section id="main" style="float:none;"><article id="post-LSM树原理探究" style="width: 66%; float:left;" class="article article-type-post" itemscope itemprop="blogPost">
+  <div id="articleInner" class="clearfix post-1016 post type-post status-publish format-standard has-post-thumbnail hentry category-template-2 category-uncategorized tag-codex tag-edge-case tag-featured-image tag-image tag-template">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="thumb" itemprop="name">
+      LSM树原理探究
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-meta">
+      
+	Posted on <a href="/2019/06/12/LSM树原理探究/" class="article-date">
+	  <time datetime="2019-06-11T16:01:13.000Z" itemprop="datePublished">六月 12, 2019</time>
+	</a>
+
+      
+	<span id="busuanzi_container_page_pv">
+	  本文总阅读量<span id="busuanzi_value_page_pv"></span>次
+	</span>
+
+    </div>
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p><img src="https://i.loli.net/2019/06/09/5cfca61335e5199804.jpg" alt></p>
+<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>B+树随着mysql Innodb引擎的广泛推广越来越被大家所熟知，而前不久我在研究Raft算法时，偶然发现了一种和B+树类似的数据结构——LSM树（Log-Structured-Merge-Tree 日志结构合并树），它是Google发表的论文 <em>Big Table</em> 中提到的一种很有趣的文件组织数据结构， 现如今已经被运用在很多工业界的产品之中了：HBase、Cassandra、LevelDB、RocksDB等等。今天就来研究研究LSM树的原理。<br><a id="more"></a> </p>
+<h3 id="LSM树定义"><a href="#LSM树定义" class="headerlink" title="LSM树定义"></a>LSM树定义</h3><p>LSM树（Log-Structured-Merge-Tree）和B+树类似，它们被设计出来都是为了更好地将数据存储到大容量磁盘中。相对于B+树，LSM树拥有更好的随机写性能。在下面的一个ACM的报告中可以看到：</p>
+<p><img src="https://i.loli.net/2019/06/09/5cfcb121ba24596367.jpg" alt="ACM-report.jpg"></p>
+<p>磁盘顺序写的性能有些颠覆我们的常识的，在上面的例子中，磁盘顺序写的吞吐量甚至能够超过内存随即写的吞吐量。而LSM树正是利用了这一点，它通过将磁盘随机写操作转化为顺序写操作，从而将随机写操作的吞吐量提高了好几个数量级。那么它是如何转换的呢？下面我们先来看看它的基本思想。</p>
+<h3 id="LSM树的基本思想"><a href="#LSM树的基本思想" class="headerlink" title="LSM树的基本思想"></a>LSM树的基本思想</h3><p>LSM树会将所有的数据插入、修改、删除等操作保存在内存之中，当此类操作达到一定的数据量后，再批量地写入到磁盘当中。而在写入磁盘时，会和以前的数据做合并。在合并过程中，并不会像B+树一样，在原数据的位置上修改，而是直接插入新的数据，从而避免了随机写。</p>
+<h3 id="LSM树的结构"><a href="#LSM树的结构" class="headerlink" title="LSM树的结构"></a>LSM树的结构</h3><p>LSM树的结构是横跨内存和磁盘的，包含memtable、immutable memtable、SSTable等多个部分。</p>
+<h4 id="memtable"><a href="#memtable" class="headerlink" title="memtable"></a>memtable</h4><p>顾名思义，memtable是在内存中的数据结构，用以保存最近的一些更新操作，当写数据到memtable中时，会先通过WAL的方式备份到磁盘中，以防数据因为内存掉电而丢失。</p>
+<blockquote>
+<p>预写式日志（Write-ahead logging，缩写 WAL）是关系数据库系统中用于提供原子性和持久性（ACID属性中的两个）的一系列技术。在使用WAL的系统中，所有的修改在提交之前都要先写入log文件中。</p>
+</blockquote>
+<p>memtable可以使用跳跃表或者搜索树等数据结构来组织数据以保持数据的有序性。当memtable达到一定的数据量后，memtable会转化成为immutable memtable，同时会创建一个新的memtable来处理新的数据。</p>
+<h4 id="immutable-memtable"><a href="#immutable-memtable" class="headerlink" title="immutable memtable"></a>immutable memtable</h4><p>顾名思义，immutable memtable在内存中是不可修改的数据结构，它是将memtable转变为SSTable的一种中间状态。目的是为了在转存过程中不阻塞写操作。写操作可以由新的memtable处理，而不用因为锁住memtable而等待。</p>
+<h4 id="SSTable"><a href="#SSTable" class="headerlink" title="SSTable"></a>SSTable</h4><p>SSTable(Sorted String Table)即为有序键值对集合，是LSM树组在磁盘中的数据的结构。如果SSTable比较大的时候，还可以根据键的值建立一个索引来加速SSTable的查询。下图是一个简单的SSTable结构示意：</p>
+<p><img src="https://i.loli.net/2019/06/09/5cfd1cb7376fd57856.png" alt="SSTable.png"></p>
+<p>memtable中的数据最终都会被转化为SSTable并保存在磁盘中，后续还会有相应的SSTable日志合并操作，也是LSM树结构的重点。</p>
+<p>最终LSM树的结构可以由下图简单表示：</p>
+<p><img src="https://i.loli.net/2019/06/11/5cffcd98abc3f22233.jpg" alt="LSM树结构.jpg"></p>
+<h3 id="LSM树的增删改查"><a href="#LSM树的增删改查" class="headerlink" title="LSM树的增删改查"></a>LSM树的增删改查</h3><p>上面介绍了LSM的基本思想和结构，下面来看看它们是怎么配合起来完成一个数据系统最常见的CRUD流程。</p>
+<h4 id="写入操作"><a href="#写入操作" class="headerlink" title="写入操作"></a>写入操作</h4><p>写操作首先需要通过WAL将数据写入到磁盘Log中，防止数据丢失，然后数据会被写入到内存的memtable中，这样一次写操作即已经完成了，只需要1次磁盘IO，再加1次内存操作。相较于B+树的多次磁盘随机IO，大大提高了效率。随后这些在memtable中的数据会被批量的合并到磁盘中的SSTable当中，将随机写变为了顺序写。</p>
+<h4 id="删除操作"><a href="#删除操作" class="headerlink" title="删除操作"></a>删除操作</h4><p>当有删除操作时，并不需要像B+树一样，在磁盘中的找到相应的数据后再删除，只需要在memtable中插入一条数据当作标志，如<code>delKey:1933</code>，当读操作读到memtable中的这个标志时，就会知道这个key已被删除。随后在日志合并中，这条被删除的数据会在合并的过程中一起被删除。</p>
+<h4 id="更新操作"><a href="#更新操作" class="headerlink" title="更新操作"></a>更新操作</h4><p>更新操作和000删除操作类似，都是只操作memtable，写入一个标志，随后真正的更新操作被延迟在合并时一并完成。</p>
+<h4 id="查询操作"><a href="#查询操作" class="headerlink" title="查询操作"></a>查询操作</h4><p>查询操作相较于B+树就会很慢了，读操作需要依次读取memtable、immutable memtable、SSTable0、SSTable1……。需要反序地遍历所有的集合，又因为写入顺序和合并顺序的缘故，序号小的集合中的数据一定会比序号大的集合中的数据新。所以在这个反序遍历的过程中一旦匹配到了要读取的数据，那么一定是最新的数据，只要返回该数据即可。但是如果一个数据的确不在所有的数据集合中，则会白白得遍历一遍。</p>
+<p>读操作看上去比较笨拙，所幸可以通过布隆过滤器来加速读操作。当布隆过滤器显示相应的SSTable中没有要读取的数据时，就跳过该SSTable。</p>
+<blockquote>
+<p>布隆过滤器实际上是一个很长的二进制向量和一系列随机映射函数。布隆过滤器可以用于检索一个元素是否在一个集合中。它的优点是空间效率和查询时间都远远超过一般的算法，缺点是有一定的误识别率和删除困难。</p>
+</blockquote>
+<p>还有上面提到的索引文件，也可以加速读操作。</p>
+<h3 id="合并操作"><a href="#合并操作" class="headerlink" title="合并操作"></a>合并操作</h3><p>由前面的增删改查操作来看，合并操作是LSM树最重要的操作。</p>
+<p>合并操作有两个主要的作用：</p>
+<ol>
+<li>合并内存中的数据到磁盘中。</li>
+<li>由于将内存数据合并到磁盘当中会产生大量的小的集合，并且更新和删除操作会产生大量的冗余数据，通过合并操作可以减少集合中的冗余数据并降低读操作时线性扫描的耗时。</li>
+</ol>
+<p>目前广泛使用的有两种合并策略，size-tiered策略和leveled策略</p>
+<h4 id="size-tiered策略"><a href="#size-tiered策略" class="headerlink" title="size-tiered策略"></a>size-tiered策略</h4><p>size-tiered策略是HBase采用的合并策略，具体内容是当某个规模的集合达到一定的数量时，将这些集合合并为一个大的集合。比如有5个50个数据的集合，那么就将他们合并为一个250个数据的集合。这种策略有一个缺点是当集合达到一定的数据量后，合并操作会变得十分的耗时。</p>
+<h4 id="leveled策略"><a href="#leveled策略" class="headerlink" title="leveled策略"></a>leveled策略</h4><p>leveled策略是LevelDB和RocksDB采用的合并策略，size-tiered策略因为会产生大数据量的集合，所以会造成突发的IO和CPU资源的消耗，所以leveled策略使用了分层的数据结构来代替原来的大数据集合。</p>
+<p>leveled策略将集合的大小限制在一个小的范围内如5MB，而且将集合划分为不同的层级。每一个层级的集合总大小是固定且递增的。如第一层为50MB，第二层为500MB…。当某一层的数据集合大小达到上限时，就会从这一层中选出一个文件和下一层合并，或者直接提升到下一层。如果在合并过程中发现了数据冲突，则丢弃下一层的数据，因为低层的数据总是更新的。</p>
+<p>同时leveled策略会限制，除第一层外。其他的每一层的键值都不会重复。这是通过合并时剔除冗余数据实现的，以此来加速在同一层内数据的线性扫描速度。</p>
+<p><a href="https://rocksdb.org.cn/doc/Leveled-Compaction.html" target="_blank" rel="noopener">RocksDB Compaction实例</a></p>
+<h3 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h3><p>LSM树牺牲了小部分读性能，而大幅度提高了写性能，所以很适合写多读少的场景，在这种场景下比B+树更加能够胜任。通过深入了解，可以发现LSM树的合并策略会大大影响到LSM树的性能，所以应该根据具体的场景，灵活地选择相应的策略。</p>
+
+      
+    </div>
+    <footer class="entry-meta entry-footer">
+      
+	<span class="ico-folder"></span>
+    <a class="article-category-link" href="/categories/后端/">后端</a>
+
+      
+  <span class="ico-tags"></span>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/后端/">后端</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/数据结构/">数据结构</a></li></ul>
+
+      
+            
+      
+        
+	<div id="comment">
+		<!-- 来必力City版安装代码 -->
+		<div id="lv-container" data-id="city" data-uid="MTAyMC8yOTQ4MS82MDQ5">
+		<script type="text/javascript">
+		   (function(d, s) {
+		       var j, e = d.getElementsByTagName(s)[0];
+
+		       if (typeof LivereTower === 'function') { return; }
+
+		       j = d.createElement(s);
+		       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+		       j.async = true;
+
+		       e.parentNode.insertBefore(j, e);
+		   })(document, 'script');
+		</script>
+		<noscript>为正常使用来必力评论功能请激活JavaScript</noscript>
+		</div>
+		<!-- City版安装代码已完成 -->
+	</div>
+
+
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/12/31/Dubbo SPI源码分析/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">上一篇</strong>
+      <div class="article-nav-title">
+        
+          Dubbo SPI源码分析
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/05/26/Raft算法注解九记/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">下一篇</strong>
+      <div class="article-nav-title">Raft算法注解九记</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+<!-- Table of Contents -->
+
+  <aside id="sidebar">
+    <div id="toc" class="toc-article" style="overflow-y: scroll; max-width: 28%;">
+    <strong class="toc-title">文章目录</strong>
+    
+      <ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LSM树定义"><span class="nav-number">2.</span> <span class="nav-text">LSM树定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LSM树的基本思想"><span class="nav-number">3.</span> <span class="nav-text">LSM树的基本思想</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LSM树的结构"><span class="nav-number">4.</span> <span class="nav-text">LSM树的结构</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#memtable"><span class="nav-number">4.1.</span> <span class="nav-text">memtable</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#immutable-memtable"><span class="nav-number">4.2.</span> <span class="nav-text">immutable memtable</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#SSTable"><span class="nav-number">4.3.</span> <span class="nav-text">SSTable</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LSM树的增删改查"><span class="nav-number">5.</span> <span class="nav-text">LSM树的增删改查</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#写入操作"><span class="nav-number">5.1.</span> <span class="nav-text">写入操作</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#删除操作"><span class="nav-number">5.2.</span> <span class="nav-text">删除操作</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#更新操作"><span class="nav-number">5.3.</span> <span class="nav-text">更新操作</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#查询操作"><span class="nav-number">5.4.</span> <span class="nav-text">查询操作</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#合并操作"><span class="nav-number">6.</span> <span class="nav-text">合并操作</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#size-tiered策略"><span class="nav-number">6.1.</span> <span class="nav-text">size-tiered策略</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#leveled策略"><span class="nav-number">6.2.</span> <span class="nav-text">leveled策略</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#结论"><span class="nav-number">7.</span> <span class="nav-text">结论</span></a></li></ol>
+    
+    </div>
+  </aside>
+</section>
+        
+      </div>
+      <footer id="footer" class="site-footer">
+  
+
+  <div class="clearfix container">
+      <div class="site-info">
+	      &copy; 2020 王老魔的代码备忘录 All Rights Reserved.
+          
+            <span id="busuanzi_container_site_uv">
+              本站访客数<span id="busuanzi_value_site_uv"></span>人次  
+              本站总访问量<span id="busuanzi_value_site_pv"></span>次
+            </span>
+          
+      </div>
+      <div class="site-credit">
+        Theme by <a href="https://github.com/iTimeTraveler/hexo-theme-hiero" target="_blank">hiero</a>
+      </div>
+  </div>
+</footer>
+
+
+<!-- min height -->
+
+<script>
+    var contentdiv = document.getElementById("content");
+
+    contentdiv.style.minHeight = document.body.offsetHeight - document.getElementById("allheader").offsetHeight - document.getElementById("footer").offsetHeight + "px";
+</script>
+
+<!-- Custome JS -->
+<script src="/js/my.js"></script>
+    </div>
+    <!-- <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">home</a>
+  
+    <a href="/archives" class="mobile-nav-link">archives</a>
+  
+    <a href="/categories" class="mobile-nav-link">categories</a>
+  
+    <a href="/tags" class="mobile-nav-link">tags</a>
+  
+</nav> -->
+    
+
+<!-- mathjax config similar to math.stackexchange -->
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.js"></script>
+
+
+<script src="/js/scripts.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="/js/main.js"></script>
+
+
+
+
+
+
+
+  <div style="display: none;">
+    <script src="https://s95.cnzz.com/z_stat.php?id=1260716016&web_id=1260716016" language="JavaScript"></script>
+  </div>
+
+
+
+	<script async src="https://dnqof95d40fo6.cloudfront.net/atw7f8.js">
+	</script>
+
+
+
+
+
+
+  </div>
+
+  <a id="rocket" href="#top" class=""></a>
+  <script type="text/javascript" src="/js/totop.js" async=""></script>
+</body>
+</html>

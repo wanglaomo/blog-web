@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+
+  <!-- PACE Progress Bar START -->
+  
+    <script src="https://raw.githubusercontent.com/HubSpot/pace/v1.0.2/pace.min.js"></script>
+    <link rel="stylesheet" href="https://github.com/HubSpot/pace/raw/master/themes/orange/pace-theme-flash.css">
+  
+  
+
+  <!-- PACE Progress Bar START -->
+
+  
+  <title>lru算法及其优化策略——算法篇 | 王老魔的代码备忘录</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  
+  <meta name="keywords" content="算法">
+  
+  
+  
+  
+  <meta name="description" content="LRU算法及其优化策略——算法篇LRU算法全称是最近最少使用算法（Least Recently Use），广泛的应用于缓存机制中。当缓存使用的空间达到上限后，就需要从已有的数据中淘汰一部分以维持缓存的可用性，而淘汰数据的选择就是通过LRU算法完成的。">
+<meta name="keywords" content="算法">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LRU算法及其优化策略——算法篇">
+<meta property="og:url" content="http://yoursite.com/2020/01/16/LRU算法及其优化策略——算法篇/index.html">
+<meta property="og:site_name" content="王老魔的代码备忘录">
+<meta property="og:description" content="LRU算法及其优化策略——算法篇LRU算法全称是最近最少使用算法（Least Recently Use），广泛的应用于缓存机制中。当缓存使用的空间达到上限后，就需要从已有的数据中淘汰一部分以维持缓存的可用性，而淘汰数据的选择就是通过LRU算法完成的。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://i.loli.net/2020/01/15/wgXpKAlYHREDWT7.jpg">
+<meta property="og:image" content="https://i.loli.net/2020/01/16/nFpNOyGteTWEhrY.png">
+<meta property="og:image" content="https://i.loli.net/2020/01/16/5r6thXs3UGEKxZR.png">
+<meta property="og:image" content="https://i.loli.net/2020/01/16/p1P9oeiKSuTWmOv.png">
+<meta property="og:updated_time" content="2020-01-19T08:56:55.600Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LRU算法及其优化策略——算法篇">
+<meta name="twitter:description" content="LRU算法及其优化策略——算法篇LRU算法全称是最近最少使用算法（Least Recently Use），广泛的应用于缓存机制中。当缓存使用的空间达到上限后，就需要从已有的数据中淘汰一部分以维持缓存的可用性，而淘汰数据的选择就是通过LRU算法完成的。">
+<meta name="twitter:image" content="https://i.loli.net/2020/01/15/wgXpKAlYHREDWT7.jpg">
+  
+    <link rel="alternate" href="/atom.xml" title="王老魔的代码备忘录" type="application/atom+xml">
+  
+  <link rel="icon" href="/css/images/favicon.jpg">
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Montserrat:700" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,300,300italic,400italic" rel="stylesheet" type="text/css">
+  <link href="https://cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet">
+  <style type="text/css">
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/9749f0/00000000000000000001008f/27/l?subset_id=2&fvd=n5) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/90cf9f/000000000000000000010091/27/l?subset_id=2&fvd=n7) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/8a5494/000000000000000000013365/27/l?subset_id=2&fvd=n4) format("woff2");font-weight:lighter;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/d337d8/000000000000000000010095/27/l?subset_id=2&fvd=i4) format("woff2");font-weight:400;font-style:italic;}</style>
+    
+  <link rel="stylesheet" id="athemes-headings-fonts-css" href="//fonts.googleapis.com/css?family=Yanone+Kaffeesatz%3A200%2C300%2C400%2C700&amp;ver=4.6.1" type="text/css" media="all">
+  <link rel="stylesheet" href="/css/style.css">
+
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/hiero.css">
+  <link rel="stylesheet" href="/css/glyphs.css">
+  
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/my.css">
+  <!-- Google Adsense -->
+  
+</head>
+</html>
+<script>
+var themeMenus = {};
+
+  themeMenus["/"] = "首页"; 
+
+  themeMenus["/archives"] = "归档"; 
+
+  themeMenus["/categories"] = "分类"; 
+
+  themeMenus["/tags"] = "标签"; 
+
+</script>
+
+
+  <body data-spy="scroll" data-target="#toc" data-offset="50">
+
+
+  <header id="allheader" class="site-header" role="banner">
+  <div class="clearfix container">
+      <div class="site-branding">
+
+          <h1 class="site-title">
+            
+              <a href="/" title="王老魔的代码备忘录" rel="home"> 王老魔的代码备忘录 </a>
+            
+          </h1>
+
+          
+            <div class="site-description">严肃的技术博客</div>
+          
+            
+          <nav id="main-navigation" class="main-navigation" role="navigation">
+            <a class="nav-open">Menu</a>
+            <a class="nav-close">Close</a>
+            <div class="clearfix sf-menu">
+
+              <ul id="main-nav" class="nmenu sf-js-enabled">
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/">首页</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/archives">归档</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/categories">分类</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/tags">标签</a> </li>
+                    
+              </ul>
+            </div>
+          </nav>
+
+
+      </div>
+  </div>
+</header>
+
+
+  <div id="originBgDiv" style="background: #fff; width: 100%;">
+
+      <div style="max-height:600px; overflow: hidden;  display: flex; display: -webkit-flex; align-items: center;">
+        <img id="originBg" width="100%" alt src>
+      </div>
+
+  </div>
+
+  <script>
+  function setAboutIMG(){
+      var imgUrls = "css/images/pose.jpg,https://source.unsplash.com/collection/954550/1920x1080".split(",");
+      var random = Math.floor((Math.random() * imgUrls.length ));
+      if (imgUrls[random].startsWith('http') || imgUrls[random].indexOf('://') >= 0) {
+        document.getElementById("originBg").src=imgUrls[random];
+      } else {
+        document.getElementById("originBg").src='/' + imgUrls[random];
+      }
+  }
+  bgDiv=document.getElementById("originBgDiv");
+  if(location.pathname.match('about')){
+    setAboutIMG();
+    bgDiv.style.display='block';
+  }else{
+    bgDiv.style.display='none';
+  }
+  </script>
+
+
+
+  <div id="container">
+    <div id="wrap">
+            
+      <div id="content" class="outer">
+        
+          <section id="main" style="float:none;"><article id="post-LRU算法及其优化策略——算法篇" style="width: 66%; float:left;" class="article article-type-post" itemscope itemprop="blogPost">
+  <div id="articleInner" class="clearfix post-1016 post type-post status-publish format-standard has-post-thumbnail hentry category-template-2 category-uncategorized tag-codex tag-edge-case tag-featured-image tag-image tag-template">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="thumb" itemprop="name">
+      LRU算法及其优化策略——算法篇
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-meta">
+      
+	Posted on <a href="/2020/01/16/LRU算法及其优化策略——算法篇/" class="article-date">
+	  <time datetime="2020-01-16T09:00:00.000Z" itemprop="datePublished">一月 16, 2020</time>
+	</a>
+
+      
+	<span id="busuanzi_container_page_pv">
+	  本文总阅读量<span id="busuanzi_value_page_pv"></span>次
+	</span>
+
+    </div>
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="LRU算法及其优化策略——算法篇"><a href="#LRU算法及其优化策略——算法篇" class="headerlink" title="LRU算法及其优化策略——算法篇"></a>LRU算法及其优化策略——算法篇</h1><p>LRU算法全称是最近最少使用算法（Least Recently Use），广泛的应用于缓存机制中。当缓存使用的空间达到上限后，就需要从已有的数据中淘汰一部分以维持缓存的可用性，而淘汰数据的选择就是通过LRU算法完成的。<br><a id="more"></a><br>LRU算法的基本思想是基于局部性原理的时间局部性：</p>
+<blockquote>
+<p>如果一个信息项正在被访问，那么在近期它很可能还会被再次访问。</p>
+</blockquote>
+<p>所以顾名思义，LRU算法会选出最近最少使用的数据进行淘汰。</p>
+<h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>一般来讲，LRU将访问数据的顺序或时间和数据本身维护在一个容器当中。当访问一个数据时：</p>
+<ol>
+<li>该数据不在容器当中，则设置该数据的优先级为最高并放入容器中。</li>
+<li>该数据在容器当中，则更新该数据的优先级至最高。</li>
+</ol>
+<p>当数据的总量达到上限后，则移除容器中优先级最低的数据。下图是一个简单的LRU原理示意图：</p>
+<p><img src="https://i.loli.net/2020/01/15/wgXpKAlYHREDWT7.jpg" alt="LRU原理示意图.jpg"></p>
+<p>如果我们按照<code>7 0 1 2 0 3 0 4</code>的顺序来访问数据，且数据的总量上限为3，则如上图所示，LRU算法会依次淘汰<code>7 1 2</code>这三个数据。 </p>
+<h2 id="朴素的LRU算法"><a href="#朴素的LRU算法" class="headerlink" title="朴素的LRU算法"></a>朴素的LRU算法</h2><p>那么我们现在就按照上面的原理，实现一个朴素的LRU算法。下面有三种方案：</p>
+<ol>
+<li><p>基于数组</p>
+<p>方案：为每一个数据附加一个额外的属性——时间戳，当每一次访问数据时，更新该数据的时间戳至当前时间。当数据空间已满后，则扫描整个数组，淘汰时间戳最小的数据。</p>
+<p>不足：维护时间戳需要耗费额外的空间，淘汰数据时需要扫描整个数组。</p>
+</li>
+<li><p>基于长度有限的双向链表</p>
+<p>方案：访问一个数据时，当数据不在链表中，则将数据插入至链表头部，如果在链表中，则将该数据移至链表头部。当数据空间已满后，则淘汰链表最末尾的数据。</p>
+<p>不足：插入数据或取数据时，需要扫描整个链表。</p>
+</li>
+<li><p>基于双向链表和哈希表</p>
+<p>方案：为了改进上面需要扫描链表的缺陷，配合哈希表，将数据和链表中的节点形成映射，将插入操作和读取操作的时间复杂度从O(N)降至O(1)</p>
+</li>
+</ol>
+<h3 id="基于双向链表-哈希表实现LRU"><a href="#基于双向链表-哈希表实现LRU" class="headerlink" title="基于双向链表 + 哈希表实现LRU"></a>基于双向链表 + 哈希表实现LRU</h3><p>下面我们就基于双向链表和哈希表实现一个LRU算法</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LRUCache</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> size; <span class="comment">// 当前容量</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> capacity; <span class="comment">// 限制大小</span></span><br><span class="line">    <span class="keyword">private</span> Map&lt;Integer, DoubleQueueNode&gt; map; <span class="comment">// 数据和链表中节点的映射</span></span><br><span class="line">    <span class="keyword">private</span> DoubleQueueNode head; <span class="comment">// 头结点 避免null检查</span></span><br><span class="line">    <span class="keyword">private</span> DoubleQueueNode tail; <span class="comment">// 尾结点 避免null检查</span></span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">LRUCache</span><span class="params">(<span class="keyword">int</span> capacity)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.capacity = capacity;</span><br><span class="line">        <span class="keyword">this</span>.map = <span class="keyword">new</span> HashMap&lt;&gt;(capacity);</span><br><span class="line">        <span class="keyword">this</span>.head = <span class="keyword">new</span> DoubleQueueNode(<span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">        <span class="keyword">this</span>.tail = <span class="keyword">new</span> DoubleQueueNode(<span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">        <span class="keyword">this</span>.head.next = tail;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Integer <span class="title">get</span><span class="params">(Integer key)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        DoubleQueueNode node = map.get(key);</span><br><span class="line">        <span class="keyword">if</span> (node == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 数据在链表中，则移至链表头部</span></span><br><span class="line">        moveToHead(node);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> node.val;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Integer <span class="title">put</span><span class="params">(Integer key, Integer value)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        Integer oldValue;</span><br><span class="line">        DoubleQueueNode node = map.get(key);</span><br><span class="line">        <span class="keyword">if</span> (node == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="comment">// 淘汰数据</span></span><br><span class="line">            eliminate();</span><br><span class="line">            <span class="comment">// 数据不在链表中，插入数据至头部</span></span><br><span class="line">            DoubleQueueNode newNode = <span class="keyword">new</span> DoubleQueueNode(key, value);</span><br><span class="line">            DoubleQueueNode temp = head.next;</span><br><span class="line">            head.next = newNode;</span><br><span class="line">            newNode.next = temp;</span><br><span class="line">            newNode.pre = head;</span><br><span class="line">            temp.pre = newNode;</span><br><span class="line">            map.put(key, newNode);</span><br><span class="line">            size++;</span><br><span class="line">            oldValue = <span class="keyword">null</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 数据在链表中，则移至链表头部</span></span><br><span class="line">            moveToHead(node);</span><br><span class="line">            oldValue = node.val;</span><br><span class="line">            node.val = value;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> oldValue;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Integer <span class="title">remove</span><span class="params">(Integer key)</span> </span>&#123;</span><br><span class="line">        DoubleQueueNode deletedNode = map.get(key);</span><br><span class="line">        <span class="keyword">if</span> (deletedNode == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        deletedNode.pre.next = deletedNode.next;</span><br><span class="line">        deletedNode.next.pre = deletedNode.pre;</span><br><span class="line">        map.remove(key);</span><br><span class="line">        <span class="keyword">return</span> deletedNode.val;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 将节点插入至头部节点</span></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">moveToHead</span><span class="params">(DoubleQueueNode node)</span> </span>&#123;</span><br><span class="line">        node.pre.next = node.next;</span><br><span class="line">        node.next.pre = node.pre;</span><br><span class="line">        DoubleQueueNode temp = head.next;</span><br><span class="line">        head.next = node;</span><br><span class="line">        node.next = temp;</span><br><span class="line">        node.pre = head;</span><br><span class="line">        temp.pre = node;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">eliminate</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (size &lt; capacity) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 将链表中最后一个节点去除</span></span><br><span class="line">        DoubleQueueNode last = tail.pre;</span><br><span class="line">        map.remove(last.key);</span><br><span class="line">        last.pre.next = tail;</span><br><span class="line">        tail.pre = last.pre;</span><br><span class="line">        size--;</span><br><span class="line">        last = <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 双向链表节点</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">DoubleQueueNode</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> key;</span><br><span class="line">    <span class="keyword">int</span> val;</span><br><span class="line">    DoubleQueueNode pre;</span><br><span class="line">    DoubleQueueNode next;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">DoubleQueueNode</span><span class="params">(<span class="keyword">int</span> key, <span class="keyword">int</span> val)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.key = key;</span><br><span class="line">        <span class="keyword">this</span>.val = val;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>基本上就是把上述LRU算法思路用代码实现了一遍，比较简单，只需要注意一下pre和next两个指针的指向和同步更新哈希表，put()和get()操作的时间复杂度都是O(1)，空间复杂度为O(N)。</p>
+<h3 id="基于LinkedHashMap实现的LRU"><a href="#基于LinkedHashMap实现的LRU" class="headerlink" title="基于LinkedHashMap实现的LRU"></a>基于LinkedHashMap实现的LRU</h3><p>其实我们可以直接根据JDK给我们提供的LinkedHashMap直接实现LRU。因为LinkedHashMap的底层即为双向链表和哈希表的组合，所以可以直接拿来使用。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LRUCache</span> <span class="keyword">extends</span> <span class="title">LinkedHashMap</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> capacity;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">LRUCache</span><span class="params">(<span class="keyword">int</span> capacity)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 注意这里将LinkedHashMap的accessOrder设为true</span></span><br><span class="line">        <span class="keyword">super</span>(<span class="number">16</span>, <span class="number">0.75f</span>, <span class="keyword">true</span>);</span><br><span class="line">        <span class="keyword">this</span>.capacity = capacity;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">boolean</span> <span class="title">removeEldestEntry</span><span class="params">(Map.Entry eldest)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">super</span>.size() &gt;= capacity;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>默认LinkedHashMap并不会淘汰数据，所以我们重写了它的removeEldestEntry()方法，当数据数量达到预设上限后，淘汰数据，accessOrder设为true意为按照访问的顺序排序。整个实现的代码量并不大，主要都是应用LinkedHashMap的特性。</p>
+<p>正因为LinkedHashMap这么好用，所以我们可以看到Dubbo的LRU缓存<a href="https://github.com/apache/dubbo/blob/7a48fac84b14ac6a21c1bdfc5958705dd8dda84d/dubbo-common/src/main/java/org/apache/dubbo/common/utils/LRUCache.java#L23" target="_blank" rel="noopener">LRUCache</a>也是基于它实现的。</p>
+<h2 id="LRU算法优化"><a href="#LRU算法优化" class="headerlink" title="LRU算法优化"></a>LRU算法优化</h2><p>朴素的LRU算法已经能够满足缓存的要求了，但是还是有一些不足。当热点数据较多时，有较高的命中率，但是如果有偶发性的批量操作，会使得热点数据被非热点数据挤出容器，使得缓存受到了“污染”。所以为了消除这种影响，又衍生出了下面这些优化方法。</p>
+<h3 id="LRU-K"><a href="#LRU-K" class="headerlink" title="LRU-K"></a>LRU-K</h3><p>LRU-K算法是对LRU算法的改进，将原先进入缓存队列的评判标准从访问一次改为访问K次，可以说朴素的LRU算法为LRU-1。</p>
+<p>LRU-K算法有两个队列，一个是缓存队列，一个是数据访问历史队列。当访问一个数据时，首先先在访问历史队列中累加访问次数，当历史访问记录超过K次后，才将数据缓存至缓存队列，从而避免缓存队列被污染。同时访问历史队列中的数据可以按照LRU的规则进行淘汰。具体如下图所示：</p>
+<p><img src="https://i.loli.net/2020/01/16/nFpNOyGteTWEhrY.png" alt="LRU-K.png"></p>
+<p>下面我们来实现一个LRU-K缓存：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 直接继承我们前面写好的LRUCache</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LRUKCache</span> <span class="keyword">extends</span> <span class="title">LRUCache</span> </span>&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> k; <span class="comment">// 进入缓存队列的评判标准</span></span><br><span class="line">    <span class="keyword">private</span> LRUCache historyList; <span class="comment">// 访问数据历史记录</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">LRUKCache</span><span class="params">(<span class="keyword">int</span> cacheSize, <span class="keyword">int</span> historyCapacity, <span class="keyword">int</span> k)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(cacheSize);</span><br><span class="line">        <span class="keyword">this</span>.k = k;</span><br><span class="line">        <span class="keyword">this</span>.historyList = <span class="keyword">new</span> LRUCache(historyCapacity);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Integer <span class="title">get</span><span class="params">(Integer key)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 记录数据访问次数</span></span><br><span class="line">        Integer historyCount = historyList.get(key);</span><br><span class="line">        historyCount = historyCount == <span class="keyword">null</span> ? <span class="number">0</span> : historyCount;</span><br><span class="line">        historyList.put(key, ++historyCount);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">super</span>.get(key);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Integer <span class="title">put</span><span class="params">(Integer key, Integer value)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (value == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 如果已经在缓存里则直接返回缓存中的数据</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">super</span>.get(key) != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">super</span>.put(key, value);;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果数据历史访问次数达到上限，则加入缓存</span></span><br><span class="line">        Integer historyCount = historyList.get(key);</span><br><span class="line">        historyCount = historyCount == <span class="keyword">null</span> ? <span class="number">0</span> : historyCount;</span><br><span class="line">        <span class="keyword">if</span> (historyCount &gt;= k) &#123;</span><br><span class="line">            <span class="comment">// 移除历史访问记录</span></span><br><span class="line">            historyList.remove(key);</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">super</span>.put(key, value);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><em>上面只是个简单的模型，并没有加上必要的并发控制</em>。</p>
+<p>一般来讲，当K的值越大，则缓存的命中率越高，但是也会使得缓存难以被淘汰。综合来说，使用LRU-2的性能最优。</p>
+<h3 id="Two-Queue"><a href="#Two-Queue" class="headerlink" title="Two Queue"></a>Two Queue</h3><p>Two Queue可以说是LRU-2的一种变种，将数据访问历史改为FIFO队列。好处的明显的，FIFO更简易，耗用资源更少，但是相比LRU-2会降低缓存命中率。</p>
+<p><img src="https://i.loli.net/2020/01/16/5r6thXs3UGEKxZR.png" alt="Two Queue.png"></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 直接继承LinkedHashMap</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TwoQueueCache</span> <span class="keyword">extends</span> <span class="title">LinkedHashMap</span>&lt;<span class="title">Integer</span>, <span class="title">Integer</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> k; <span class="comment">// 进入缓存队列的评判标准</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> historyCapacity; <span class="comment">// 访问数据历史记录最大大小</span></span><br><span class="line">    <span class="keyword">private</span> LRUCache lruCache; <span class="comment">// 我们前面写好的LRUCache</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">TwoQueueCache</span><span class="params">(<span class="keyword">int</span> cacheSize, <span class="keyword">int</span> historyCapacity, <span class="keyword">int</span> k)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 注意这里设置LinkedHashMap的accessOrder为false</span></span><br><span class="line">        <span class="keyword">super</span>();</span><br><span class="line">        <span class="keyword">this</span>.historyCapacity = historyCapacity;</span><br><span class="line">        <span class="keyword">this</span>.k = k;</span><br><span class="line">        <span class="keyword">this</span>.lruCache = <span class="keyword">new</span> LRUCache(cacheSize);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Integer <span class="title">get</span><span class="params">(Integer key)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 记录数据访问记录</span></span><br><span class="line">        Integer historyCount = <span class="keyword">super</span>.get(key);</span><br><span class="line">        historyCount = historyCount == <span class="keyword">null</span> ? <span class="number">0</span> : historyCount;</span><br><span class="line">        <span class="keyword">super</span>.put(key, historyCount);</span><br><span class="line">        <span class="keyword">return</span> lruCache.get(key);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Integer <span class="title">put</span><span class="params">(Integer key, Integer value)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (value == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果已经在缓存里则直接返回缓存中的数据</span></span><br><span class="line">        <span class="keyword">if</span> (lruCache.get(key) != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> lruCache.put(key, value);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">         <span class="comment">// 如果数据历史访问次数达到上限，则加入缓存</span></span><br><span class="line">        Integer historyCount = <span class="keyword">super</span>.get(key);</span><br><span class="line">        historyCount = historyCount == <span class="keyword">null</span> ? <span class="number">0</span> : historyCount;</span><br><span class="line">        <span class="keyword">if</span> (historyCount &gt;= k) &#123;</span><br><span class="line">            <span class="comment">// 移除历史访问记录</span></span><br><span class="line">            <span class="keyword">super</span>.remove(key);</span><br><span class="line">            <span class="keyword">return</span> lruCache.put(key, value);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">boolean</span> <span class="title">removeEldestEntry</span><span class="params">(Map.Entry eldest)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">super</span>.size() &gt;= historyCapacity;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里直接继承LinkedHashMap，并且accessOrder默认为false，意为按照插入顺序进行排序，二者结合即为一个FIFO的队列。通过重写removeEldestEntry()方法来自动淘汰最早插入的数据。</p>
+<h3 id="Multi-Queue"><a href="#Multi-Queue" class="headerlink" title="Multi Queue"></a>Multi Queue</h3><p>相比于上面两种优化，Multi Queue（MQ）的实现则复杂的多，顾名思义，MQ是由多个LRU队列组成的。每一个LRU队列都有一个相应的优先级，数据会根据访问次数计算出相应的优先级，并放在该队列中。</p>
+<p><img src="https://i.loli.net/2020/01/16/p1P9oeiKSuTWmOv.png" alt="Multi Queue.png"></p>
+<ul>
+<li><p>数据插入和访问：当数据首次插入时，会放入到优先级最低的Q0队列。当再次访问时，根据LRU的规则，会移至队列头部。当根据访问次数计算的优先级提升后，会将该数据移至更高优先级的队列的头部，并删除原队列的该数据。同样的，当该数据的优先级降低时，会移至低优先级的队列中。</p>
+</li>
+<li><p>数据淘汰：数据淘汰总是从最低优先级的队列的末尾数据进行，并将它加入到Q-history队列的头部。如果数据在Q-history数据中被访问，则重新计算该数据的优先级，并将它加入到相应优先级的队列中。</p>
+</li>
+</ul>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2>
+      
+    </div>
+    <footer class="entry-meta entry-footer">
+      
+	<span class="ico-folder"></span>
+    <a class="article-category-link" href="/categories/算法/">算法</a>
+
+      
+  <span class="ico-tags"></span>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/算法/">算法</a></li></ul>
+
+      
+            
+      
+        
+	<div id="comment">
+		<!-- 来必力City版安装代码 -->
+		<div id="lv-container" data-id="city" data-uid="MTAyMC8yOTQ4MS82MDQ5">
+		<script type="text/javascript">
+		   (function(d, s) {
+		       var j, e = d.getElementsByTagName(s)[0];
+
+		       if (typeof LivereTower === 'function') { return; }
+
+		       j = d.createElement(s);
+		       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+		       j.async = true;
+
+		       e.parentNode.insertBefore(j, e);
+		   })(document, 'script');
+		</script>
+		<noscript>为正常使用来必力评论功能请激活JavaScript</noscript>
+		</div>
+		<!-- City版安装代码已完成 -->
+	</div>
+
+
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/01/17/LRU算法及其优化策略——Redis篇/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">上一篇</strong>
+      <div class="article-nav-title">
+        
+          LRU算法及其优化策略——算法篇
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/01/16/LRU算法及其优化策略——Mysql篇/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">下一篇</strong>
+      <div class="article-nav-title">LRU算法及其优化策略——Mysql篇</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+<!-- Table of Contents -->
+
+  <aside id="sidebar">
+    <div id="toc" class="toc-article" style="overflow-y: scroll; max-width: 28%;">
+    <strong class="toc-title">文章目录</strong>
+    
+      <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#LRU算法及其优化策略——算法篇"><span class="nav-number">1.</span> <span class="nav-text">LRU算法及其优化策略——算法篇</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#原理"><span class="nav-number">1.1.</span> <span class="nav-text">原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#朴素的LRU算法"><span class="nav-number">1.2.</span> <span class="nav-text">朴素的LRU算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#基于双向链表-哈希表实现LRU"><span class="nav-number">1.2.1.</span> <span class="nav-text">基于双向链表 + 哈希表实现LRU</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#基于LinkedHashMap实现的LRU"><span class="nav-number">1.2.2.</span> <span class="nav-text">基于LinkedHashMap实现的LRU</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LRU算法优化"><span class="nav-number">1.3.</span> <span class="nav-text">LRU算法优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#LRU-K"><span class="nav-number">1.3.1.</span> <span class="nav-text">LRU-K</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Two-Queue"><span class="nav-number">1.3.2.</span> <span class="nav-text">Two Queue</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Multi-Queue"><span class="nav-number">1.3.3.</span> <span class="nav-text">Multi Queue</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">1.4.</span> <span class="nav-text">总结</span></a></li></ol></li></ol>
+    
+    </div>
+  </aside>
+</section>
+        
+      </div>
+      <footer id="footer" class="site-footer">
+  
+
+  <div class="clearfix container">
+      <div class="site-info">
+	      &copy; 2020 王老魔的代码备忘录 All Rights Reserved.
+          
+            <span id="busuanzi_container_site_uv">
+              本站访客数<span id="busuanzi_value_site_uv"></span>人次  
+              本站总访问量<span id="busuanzi_value_site_pv"></span>次
+            </span>
+          
+      </div>
+      <div class="site-credit">
+        Theme by <a href="https://github.com/iTimeTraveler/hexo-theme-hiero" target="_blank">hiero</a>
+      </div>
+  </div>
+</footer>
+
+
+<!-- min height -->
+
+<script>
+    var contentdiv = document.getElementById("content");
+
+    contentdiv.style.minHeight = document.body.offsetHeight - document.getElementById("allheader").offsetHeight - document.getElementById("footer").offsetHeight + "px";
+</script>
+
+<!-- Custome JS -->
+<script src="/js/my.js"></script>
+    </div>
+    <!-- <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">home</a>
+  
+    <a href="/archives" class="mobile-nav-link">archives</a>
+  
+    <a href="/categories" class="mobile-nav-link">categories</a>
+  
+    <a href="/tags" class="mobile-nav-link">tags</a>
+  
+</nav> -->
+    
+
+<!-- mathjax config similar to math.stackexchange -->
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.js"></script>
+
+
+<script src="/js/scripts.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="/js/main.js"></script>
+
+
+
+
+
+
+
+  <div style="display: none;">
+    <script src="https://s95.cnzz.com/z_stat.php?id=1260716016&web_id=1260716016" language="JavaScript"></script>
+  </div>
+
+
+
+	<script async src="https://dnqof95d40fo6.cloudfront.net/atw7f8.js">
+	</script>
+
+
+
+
+
+
+  </div>
+
+  <a id="rocket" href="#top" class=""></a>
+  <script type="text/javascript" src="/js/totop.js" async=""></script>
+</body>
+</html>

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+
+  <!-- PACE Progress Bar START -->
+  
+    <script src="https://raw.githubusercontent.com/HubSpot/pace/v1.0.2/pace.min.js"></script>
+    <link rel="stylesheet" href="https://github.com/HubSpot/pace/raw/master/themes/orange/pace-theme-flash.css">
+  
+  
+
+  <!-- PACE Progress Bar START -->
+
+  
+  <title>raft算法注解九记 | 王老魔的代码备忘录</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  
+  <meta name="keywords" content="分布式算法">
+  
+  
+  
+  
+  <meta name="description" content="Raft算法解读 前言 在之前的文章中我分享了个人对于Paxos算法的理解和见解，在文章的末尾引出了Raft算法，今天就来填完Raft算法这个坑。 Raft算法的作者在论文中吐槽了Paxos算法难以以理解且难以实现，所以提出了一个以易于理解且方便构建的分布式一致性算法，而且Raft算法提供了和Paxos算法相同的安全性及相差无几的性能。Raft算法的提出可以说是造福了我们这些智商普通的下里巴人。">
+<meta name="keywords" content="分布式,算法">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Raft算法注解九记">
+<meta property="og:url" content="http://yoursite.com/2019/05/26/Raft算法注解九记/index.html">
+<meta property="og:site_name" content="王老魔的代码备忘录">
+<meta property="og:description" content="Raft算法解读 前言 在之前的文章中我分享了个人对于Paxos算法的理解和见解，在文章的末尾引出了Raft算法，今天就来填完Raft算法这个坑。 Raft算法的作者在论文中吐槽了Paxos算法难以以理解且难以实现，所以提出了一个以易于理解且方便构建的分布式一致性算法，而且Raft算法提供了和Paxos算法相同的安全性及相差无几的性能。Raft算法的提出可以说是造福了我们这些智商普通的下里巴人。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://i.loli.net/2019/05/07/5cd1a89d4df80.jpg">
+<meta property="og:image" content="https://i.loli.net/2019/05/16/5cdd7cfdccd1574917.png">
+<meta property="og:image" content="https://i.loli.net/2019/05/16/5cdd64a402cd113454.png">
+<meta property="og:image" content="https://i.loli.net/2019/05/13/5cd913ee6db9444208.png">
+<meta property="og:image" content="https://i.loli.net/2019/05/13/5cd93fc8d0e7376083.png">
+<meta property="og:image" content="https://i.loli.net/2019/05/13/5cd94e1d11f2861040.png">
+<meta property="og:updated_time" content="2019-12-10T14:11:17.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Raft算法注解九记">
+<meta name="twitter:description" content="Raft算法解读 前言 在之前的文章中我分享了个人对于Paxos算法的理解和见解，在文章的末尾引出了Raft算法，今天就来填完Raft算法这个坑。 Raft算法的作者在论文中吐槽了Paxos算法难以以理解且难以实现，所以提出了一个以易于理解且方便构建的分布式一致性算法，而且Raft算法提供了和Paxos算法相同的安全性及相差无几的性能。Raft算法的提出可以说是造福了我们这些智商普通的下里巴人。">
+<meta name="twitter:image" content="https://i.loli.net/2019/05/07/5cd1a89d4df80.jpg">
+  
+    <link rel="alternate" href="/atom.xml" title="王老魔的代码备忘录" type="application/atom+xml">
+  
+  <link rel="icon" href="/css/images/favicon.jpg">
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Montserrat:700" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,300,300italic,400italic" rel="stylesheet" type="text/css">
+  <link href="https://cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet">
+  <style type="text/css">
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/9749f0/00000000000000000001008f/27/l?subset_id=2&fvd=n5) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/90cf9f/000000000000000000010091/27/l?subset_id=2&fvd=n7) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/8a5494/000000000000000000013365/27/l?subset_id=2&fvd=n4) format("woff2");font-weight:lighter;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/d337d8/000000000000000000010095/27/l?subset_id=2&fvd=i4) format("woff2");font-weight:400;font-style:italic;}</style>
+    
+  <link rel="stylesheet" id="athemes-headings-fonts-css" href="//fonts.googleapis.com/css?family=Yanone+Kaffeesatz%3A200%2C300%2C400%2C700&amp;ver=4.6.1" type="text/css" media="all">
+  <link rel="stylesheet" href="/css/style.css">
+
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/hiero.css">
+  <link rel="stylesheet" href="/css/glyphs.css">
+  
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/my.css">
+  <!-- Google Adsense -->
+  
+</head>
+</html>
+<script>
+var themeMenus = {};
+
+  themeMenus["/"] = "首页"; 
+
+  themeMenus["/archives"] = "归档"; 
+
+  themeMenus["/categories"] = "分类"; 
+
+  themeMenus["/tags"] = "标签"; 
+
+</script>
+
+
+  <body data-spy="scroll" data-target="#toc" data-offset="50">
+
+
+  <header id="allheader" class="site-header" role="banner">
+  <div class="clearfix container">
+      <div class="site-branding">
+
+          <h1 class="site-title">
+            
+              <a href="/" title="王老魔的代码备忘录" rel="home"> 王老魔的代码备忘录 </a>
+            
+          </h1>
+
+          
+            <div class="site-description">严肃的技术博客</div>
+          
+            
+          <nav id="main-navigation" class="main-navigation" role="navigation">
+            <a class="nav-open">Menu</a>
+            <a class="nav-close">Close</a>
+            <div class="clearfix sf-menu">
+
+              <ul id="main-nav" class="nmenu sf-js-enabled">
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/">首页</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/archives">归档</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/categories">分类</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/tags">标签</a> </li>
+                    
+              </ul>
+            </div>
+          </nav>
+
+
+      </div>
+  </div>
+</header>
+
+
+  <div id="originBgDiv" style="background: #fff; width: 100%;">
+
+      <div style="max-height:600px; overflow: hidden;  display: flex; display: -webkit-flex; align-items: center;">
+        <img id="originBg" width="100%" alt src>
+      </div>
+
+  </div>
+
+  <script>
+  function setAboutIMG(){
+      var imgUrls = "css/images/pose.jpg,https://source.unsplash.com/collection/954550/1920x1080".split(",");
+      var random = Math.floor((Math.random() * imgUrls.length ));
+      if (imgUrls[random].startsWith('http') || imgUrls[random].indexOf('://') >= 0) {
+        document.getElementById("originBg").src=imgUrls[random];
+      } else {
+        document.getElementById("originBg").src='/' + imgUrls[random];
+      }
+  }
+  bgDiv=document.getElementById("originBgDiv");
+  if(location.pathname.match('about')){
+    setAboutIMG();
+    bgDiv.style.display='block';
+  }else{
+    bgDiv.style.display='none';
+  }
+  </script>
+
+
+
+  <div id="container">
+    <div id="wrap">
+            
+      <div id="content" class="outer">
+        
+          <section id="main" style="float:none;"><article id="post-Raft算法注解九记" style="width: 66%; float:left;" class="article article-type-post" itemscope itemprop="blogPost">
+  <div id="articleInner" class="clearfix post-1016 post type-post status-publish format-standard has-post-thumbnail hentry category-template-2 category-uncategorized tag-codex tag-edge-case tag-featured-image tag-image tag-template">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="thumb" itemprop="name">
+      Raft算法注解九记
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-meta">
+      
+	Posted on <a href="/2019/05/26/Raft算法注解九记/" class="article-date">
+	  <time datetime="2019-05-26T01:04:57.000Z" itemprop="datePublished">五月 26, 2019</time>
+	</a>
+
+      
+	<span id="busuanzi_container_page_pv">
+	  本文总阅读量<span id="busuanzi_value_page_pv"></span>次
+	</span>
+
+    </div>
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="Raft算法解读"><a href="#Raft算法解读" class="headerlink" title="Raft算法解读"></a>Raft算法解读</h3><p><img src="https://i.loli.net/2019/05/07/5cd1a89d4df80.jpg" alt></p>
+<h4 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h4><hr>
+<p>在<a href="http://wanglaomo.coding.me/2019/05/03/Paxos——分布式一致性算法/" target="_blank" rel="noopener">之前的文章</a>中我分享了个人对于Paxos算法的理解和见解，在文章的末尾引出了Raft算法，今天就来填完Raft算法这个坑。</p>
+<p>Raft算法的作者在论文中吐槽了Paxos算法难以以理解且难以实现，所以提出了一个以<strong>易于理解且方便构建</strong>的分布式一致性算法，而且Raft算法提供了<strong>和Paxos算法相同的安全性及相差无几的性能</strong>。Raft算法的提出可以说是造福了我们这些智商普通的下里巴人。</p>
+<p>个人认为Raft算法最难能可贵的地方就在于采用了一种工程化的思维来设计算法，从而使得Raft算法能够广泛地应用在分布式的领域之中。（etcd、SOFAJRaft、TiKV …）</p>
+<p>虽然Raft算法相比于Paxos算法更加容易理解，但是在阅读原论文的时候，我还是在不少地方踩了坑，本文就是疏理和分享我在这些关键点处的疑惑和个人见解。（本文讨论范围仅是Basic Raft算法）<br><a id="more"></a> </p>
+<p><em><a href="https://github.com/maemual/raft-zh_cn/blob/master/raft-zh_cn.md" target="_blank" rel="noopener">Raft论文的中文翻译版</a></em><br><br><em><a href="http://thesecretlivesofdata.com/raft/" target="_blank" rel="noopener">Raft算法动画</a></em></p>
+<h4 id="一、Raft算法的本质"><a href="#一、Raft算法的本质" class="headerlink" title="一、Raft算法的本质"></a>一、Raft算法的本质</h4><hr>
+<p>无论是Raft算法还是Paxos算法，都依赖于<strong>复制状态机</strong>的模型，复制状态机的模型如下图所示：</p>
+<p><img src="https://i.loli.net/2019/05/16/5cdd7cfdccd1574917.png" alt="raft-图1.png"></p>
+<p>简单的描述下这个模型就是：集群的多个节点上都拥有相同的初始状态（state），而通过执行一系列的操作日志（log），<strong>最终还是能够产生一致的状态</strong>。在图中的Consensus模块就是Raft算法起作用的模块，使得在复杂的分布式环境下，仍能够实现复制状态机的一致性。<br>图中的四个操作相应如下：</p>
+<ul>
+<li>①客户端请求集群中的领导者，并要求执行操作日志。</li>
+<li>②领导者向所有的追随者发起写日志请求。追随者接收到写日志请求后，将日志放入日志队列中并回应领导者。</li>
+<li>③当大多数的追随者响应成功，则领导者发起应用日志请求，追随者收到请求后则将日志写入各自的状态机内</li>
+<li>④领导者回应客户端写入成功。</li>
+</ul>
+<p>我们在后面可以看到Raft算法的全部内容都是围绕着这个模型出发的，所以理解这个模型十分的重要，虽然看起来流程很简单，但是还是要考虑很多的边界条件，这也是为什么Raft算法有很多补丁的缘故，好在Raft算法的作者都给出了相应的解决方案，业内也有很多公司也一直在做着对Raft算法进行优化的工作。</p>
+<p>Raft算法和Paxos算法一样，也提供了以下的<strong>分布式算法的特性</strong>:</p>
+<blockquote>
+<ul>
+<li>安全性保证（绝对不会返回一个错误的结果）：在非拜占庭错误情况下，包括网络延迟、分区、丢包、冗余和乱序等错误都可以保证正确。<ul>
+<li>可用性：集群中只要有大多数的机器可运行并且能够相互通信、和客户端通信，就可以保证可用。因此，一个典型的包含 5 个节点的集群可以容忍两个节点的失败。服务器被停止就认为是失败。他们当有稳定的存储的时候可以从状态中恢复回来并重新加入集群。</li>
+<li>不依赖时序来保证一致性：物理时钟错误或者极端的消息延迟只有在最坏情况下才会导致可用性问题。</li>
+<li>通常情况下，一条指令可以尽可能快的在集群中大多数节点响应一轮远程过程调用时完成。小部分比较慢的节点不会影响系统整体的性能。</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+<h4 id="二、Raft为什么选择随机选举超时时间的机制"><a href="#二、Raft为什么选择随机选举超时时间的机制" class="headerlink" title="二、Raft为什么选择随机选举超时时间的机制"></a>二、Raft为什么选择随机选举超时时间的机制</h4><hr>
+<p>相对于Paxos来说，Raft一个重要的简化操作就是使用随机选举超时时间来代替原来Paxos复杂的两阶段提交的策略。使用随机时间虽然会导致选举没有那么高效，但是大大降低了复杂度，而牺牲的仅仅是在选主时的效率，在日常的使用过程中，选主的时间仅仅只占正常使用时间的很少一部分时间。我们可以从原论文的这张图中看到：</p>
+<p><a href="https://i.loli.net/2019/05/16/5cdd64a402cd113454.png" target="_blank" rel="noopener"><img src="https://i.loli.net/2019/05/16/5cdd64a402cd113454.png" alt="raft-图2.png"></a></p>
+<p>在正常使用过程中，Raft算法和Paxos算法性能相差不大，只有在比较极端的情况下，即Leader频繁崩溃，Raft算法才会在选举时间上被Paxos算法甩开。</p>
+<p>与随机选举超时时间相辅相成的是<strong>定时器和心跳包机制</strong>，追随者通过通过定时器来竞争成为候选者，而领导者通过心跳包来“压制”追随者，从而保持自己的领导地位，而通过随机选举超时时间能够尽量避免在Paxos算法中讨论的选票瓜分的情况的发生。这样的确是简单易行的选主方法。但是还是留有<strong>两个漏洞</strong>需要解决：</p>
+<ol>
+<li>随机选举超时是追随者的行为，而只有当领导者收到了来自更高任期的领导者发送的心跳包时，才会意识到自己已经丧失了领导地位。所以这就会导致一个旧的领导者和客户端通信，使得客户端读到过期的数据。为了解决这个问题。Raft算法的作者指出，虽然是读数据，但是领导者还是需要在响应客户端之前， <strong>生成一条特殊的日志（Read Index）并向所有的追随者发送心跳包</strong>，如果大多数的追随者都返回了正常的响应，那么只要这条日志被状态机apply之后，就代表在此时此刻，领导者仍具有领导地位，此时再返回给客户端的就是最新的数据了。如此一来，虽然保证了算法的安全性，但是读操作的性能就变得和写操作的性能相差不大了，这在读多写少的场景下还是比较致命的。</li>
+<li>上面那条说的是旧的领导者可能会导致的一些问题，相对的，追随者也有可能会作妖。在下面两种场景中，追随者都会对集群的稳定性造成影响。<br><br>①追随者采用了错误的配置文件，不停向集群中的其他节点发送收集投票的请求，而实际上该追随者并不包含在集群内。<br><br>②追随者只是单方面的和领导者失去了联系，而与集群中其他节点通信完好，所以追随者不停向集群中的其他节点发送收集投票的请求，而实际上领导者并没有崩溃。<br><br>上面的这两种情况都会对集群的网络造成波动，那么有什么方案来避免呢？<br>这个问题一般可以通过在成为候选者之前再加一层检验来解决，当候选人要发起选举请求时，首先发送<strong>pre-vote</strong>，当收到大多数的节点的同意后，再自增term并发起选举请求。当节点收到pre-vote请求时，如果它近期和领导人有过通信，则直接忽略掉pre-vote请求，从而避免了候选人无限的发起选举请求。</li>
+</ol>
+<h4 id="三、prevLogIndex、prevLogIndex、lastLogIndex、lastLogTerm都有什么用？"><a href="#三、prevLogIndex、prevLogIndex、lastLogIndex、lastLogTerm都有什么用？" class="headerlink" title="三、prevLogIndex、prevLogIndex、lastLogIndex、lastLogTerm都有什么用？"></a>三、prevLogIndex、prevLogIndex、lastLogIndex、lastLogTerm都有什么用？</h4><hr>
+<p>在Basic Raft算法中一共只有两种RPC请求，分别是附加日志RPC和请求投票RPC，具体的参数如下表所示：</p>
+<p><strong>附加日志RPC：</strong></p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>解释</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>term</td>
+<td>领导人的任期号</td>
+</tr>
+<tr>
+<td>leaderId</td>
+<td>领导人的 Id，以便于跟随者重定向请求</td>
+</tr>
+<tr>
+<td>prevLogIndex</td>
+<td>新的日志条目紧随之前的索引值</td>
+</tr>
+<tr>
+<td>prevLogTerm</td>
+<td>prevLogIndex 条目的任期号</td>
+</tr>
+<tr>
+<td>entries[]</td>
+<td>准备存储的日志条目（表示心跳时为空；一次性发送多个是为了提高效率）</td>
+</tr>
+<tr>
+<td>leaderCommit</td>
+<td>领导人已经提交的日志的索引值</td>
+</tr>
+</tbody>
+</table>
+<p>其他的参数都比较好理解，但是第一次看prevLogIndex、prevLogIndex这两个参数时，很不好理解。下面来详细说明一下个两个参数。<br><br>这两个参数主要是为了<strong>保证算法的一致性</strong>而存在的。<em>（详细的一致性检查说明可以去看下面的第四小节）</em><br><br>关于这个参数的说明如下:</p>
+<blockquote>
+<p>如果日志在 prevLogIndex 位置处的日志条目的任期号和 prevLogTerm 不匹配，则返回 false </p>
+</blockquote>
+<p>这句话即意为当领导者和追随者的日志列表冲突时，追随者会返回false给领导者，领导者得知后会发送以往的日志，最终覆盖冲突的日志段。从而就能够保证Raft算法的日志匹配特性：</p>
+<blockquote>
+<p>如果两个日志在相同的索引位置的日志条目的任期号相同，那么我们就认为这个日志从头到这个索引位置之间全部完全相同</p>
+</blockquote>
+<p><strong>请求投票RPC</strong></p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>解释</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>term</td>
+<td>候选人的任期号</td>
+</tr>
+<tr>
+<td>candidateId</td>
+<td>请求选票的候选人的 Id</td>
+</tr>
+<tr>
+<td>lastLogIndex</td>
+<td>候选人的最后日志条目的索引值</td>
+</tr>
+<tr>
+<td>lastLogTerm</td>
+<td>候选人最后日志条目的任期号</td>
+</tr>
+</tbody>
+</table>
+<p>下面来详细说明一下lastLogIndex和lastLogTerm这两个参数。首先这两个参数是为了领导者选举服务的，是为了在领导者选举时<strong>排除掉不包含最新日志的节点</strong>，从而避免已提交日志被覆盖的情况的发生。（<em>但是并不能完全避免，在下面第五节提出了这样仍会有一个小漏洞</em>）<br></p>
+<p>首先我们来看一下候选者是在什么情况下才能获得选票。</p>
+<ol>
+<li>追随者的当前任期值小于请求投票RPC中的任期（即候选者自增后的任期）</li>
+<li>当任期相等时，就比对lastLogTerm的大小，当候选者的lastLogTerm小于追随者的时，追随者不回应候选者</li>
+</ol>
+<p>再结合Raft算法的运行机制：</p>
+<blockquote>
+<p>Raft 算法保证所有已提交的日志条目都是持久化的并且最终会被所有可用的状态机执行。在领导人将创建的日志条目复制到<strong>大多数</strong>的服务器上的时候，日志条目就会被提交。</p>
+</blockquote>
+<p>因为候选者成为新任领导者必须要获得大多数节点的选票，而如果该候选者没有最新一条日志的信息，一定不会得到大多数节点的选票，这样一来就保证了被选举出来的新领导者一定会包含最新的一条日志，从而保证了系统的安全性。</p>
+<h4 id="四、Raft算法如何确保所有状态机的一致性"><a href="#四、Raft算法如何确保所有状态机的一致性" class="headerlink" title="四、Raft算法如何确保所有状态机的一致性"></a>四、Raft算法如何确保所有状态机的一致性</h4><hr>
+<p>接下来继续聊一聊Raft算法是怎么保证一致性的。</p>
+<ol>
+<li><p>数据不一致的判定标准</p>
+<p>首先得有一个标准来判断数据是不是一致的，Raft算法设计了这个样一个规则：</p>
+<blockquote>
+<p>领导人最多在一个任期里在指定的一个日志索引位置创建一条日志条目，同时日志条目在日志中的位置也从来不会改变。</p>
+</blockquote>
+<p>有了这个规则，就很好判断不一致了，如果需要附加的新日志的<strong>上一条日志的任期或索引</strong>和领导者所记录的（领导者需要维护这样一个元数据信息）不一致，那么就代表发生了不一致的情况。</p>
+</li>
+<li><p>Raft算法有一个领导人只附加原则：</p>
+</li>
+</ol>
+<blockquote>
+<p>领导人绝对不会删除或者覆盖自己的日志，只会增加。</p>
+</blockquote>
+<p>这里引申出来的意思就是，当数据不一致的情况发生时，一切以领导人的数据为准，领导者会通过强制复制自己的日志到数据不一致的追随者，从而使得集群中的所有节点的数据保持一致性。这里会有一个小疑问：如果新领导者覆盖了旧领导者的日志呢？这种情况是一定会发生的，但是我们从上一小节得知，新任领导者一定会包含最新一条日志，即新任领导者的数据和旧领导者的数据就算是不一致的，也仅仅是未提交的日志，即客户端尚未得到回复，此时就算是新任领导者覆盖旧领导者的数据，客户端得到回复，持久化日志失败。从客户端的角度来开，并没有产生数据不一致的情况。</p>
+<ol start="3">
+<li><p>日志被应用到各个节点的状态机需要经过两个阶段：</p>
+<ol>
+<li>领导者发起附加日志RPC</li>
+<li>领导者判断日志是否可被提交（被大多数节点复制成功），如果可被提交则回复客户端，然后并行地再次发送附加日志RPC，追随者看到该日志可被提交，则应用到各自的状态机中。</li>
+</ol>
+<p>这个和<strong>两阶段提交协议</strong>差不多，区别是不用所有的节点都要复制成功，只要有一半多的节点正常响应，就能维持集群的正常运行，对于那些暂时不能够正常响应的追随者，领导者会持续不断的发送RPC，直到所有的节点都能存储一致的数据。</p>
+</li>
+<li><p>日志不一致的处理策略</p>
+<p>当附加日志RPC的一致性检查失败时，追随者会拒绝这个请求。当领导者检测到附加日志的请求失败后，会减小当前附加日志的索引值，再次尝试附加日志，直至成功。为了减少领导者的附加日志RPC被拒绝的次数，可以做一个小优化，当追随者拒绝领导者的附加日志请求时，追随者可以返回包含冲突的条目的任期号和自己存储的那个任期的最早的索引地址，从而<strong>使得领导人和追随者尽快找到最后两者达成一致的地方</strong>。在下面的第八小节还可以看到，当追随者和领导者之间的日志相差过大时，领导者会直接发送<strong>快照</strong>来快速达到一致。</p>
+</li>
+</ol>
+<p>通过以上四条规则，我们可以看到领导者并不需要耗费很多的资源，就可以管理所有节点的一致性，通过不断发送附加日志RPC（或心跳包），集群的节点就会自动趋于一致。当然从客户端的角度来看，Raft算法提供的强一致性的特性。</p>
+<h4 id="五、Raft-提交之前任期内的日志条目的正确方式"><a href="#五、Raft-提交之前任期内的日志条目的正确方式" class="headerlink" title="五、Raft 提交之前任期内的日志条目的正确方式"></a>五、Raft 提交之前任期内的日志条目的正确方式</h4><hr>
+<p>下面我们来看看在第三小节提到的小漏洞，在原论文的5.4.2节中，给出了下面这个例子，演示了一条已经被提交的日志在未来被其他的领导人日志覆盖的情况。</p>
+<p><a href="https://i.loli.net/2019/05/13/5cd913ee6db9444208.png" target="_blank" rel="noopener"><img src="https://i.loli.net/2019/05/13/5cd913ee6db9444208.png" alt="raft-图3.png"></a></p>
+<blockquote>
+<p>如图的时间序列展示了为什么领导人无法决定对老任期号的日志条目进行提交。在 (a) 中，S1 是领导者，部分的复制了索引位置 2 的日志条目。在 (b) 中，S1 崩溃了，然后 S5 在任期 3 里通过 S3、S4 和自己的选票赢得选举，然后从客户端接收了一条不一样的日志条目放在了索引 2 处。然后到 (c)，S5 又崩溃了；S1 重新启动，选举成功，开始复制日志。在这时，来自任期 2 的那条日志已经被复制到了集群中的大多数机器上，但是还没有被提交。如果 S1 在 (d) 中又崩溃了，S5 可以重新被选举成功（通过来自 S2，S3 和 S4 的选票），然后覆盖了他们在索引 2 处的日志。反之，如果在崩溃之前，S1 把自己主导的新任期里产生的日志条目复制到了大多数机器上，就如 (e) 中那样，那么在后面任期里面这些新的日志条目就会被提交（因为S5 就不可能选举成功）。 这样在同一时刻就同时保证了，之前的所有老的日志条目就会被提交。</p>
+</blockquote>
+<p>为了避免上面的情况，这里又引出了Raft算法的另一个补丁：<strong>Raft 永远不会通过计算副本数目的方式去提交一个之前任期内的日志条目</strong>。这个补丁是什么意思呢？注意在时间戳为(c)的时刻，此时S1为领导人，S1发现了在他的上个任期内提交的日志（即任期为2的第一个日志）还没有被大多数的追随者复制。所以S1将该日志发送给S3，而S3检查了该日志发现满足条件：</p>
+<ol>
+<li>S3 currentTerm = 1 &lt; 该日志任期 = 2</li>
+<li>S3 在index上的日志为空，可以接受该日志。</li>
+</ol>
+<p>所以S3复制该日志到本地日志中，TODO并修改S3 currentTerm = 2， 然后返回给领导人S1，领导人通过计算已复制的追随者的数量超过了一半，遂发起提交，然后返回给客户端（client）：“我已经将该日志保存好了，可以放心使用了。”<br>然而在时间戳为(d)的时刻，S1崩溃，而S5成为候选人，开始收集选票，这时候来分析S5和关键人S3之间的关系：</p>
+<ul>
+<li>S5的任期 = 5 &gt; S3的任期 = 2</li>
+</ul>
+<p>那么如果S5向S3收集选票，尽管S5上并没有任期号为2的日志，而S3上有S1在任期号为4时传播上个任期的日志，但是按照Raft选举的规则，S3还是会给S5投一票。又因为在Raft算法中：</p>
+<blockquote>
+<p>领导人处理不一致是通过强制跟随者直接复制自己的日志来解决了。</p>
+</blockquote>
+<p>所以任期为2的第一个日志，会因为这个原因被覆盖掉了，那么客户端如果来访问，就会发现访问前后的数据是不一致的，这是不能够容忍的。那么如果领导人想要提交以前任期的日志呢？这个关键点就在于在时间戳为(d)的时刻，不能够让缺少了关键日志的S5成为领导人。那么只要在时间戳为(c)的时刻，<strong>有任期号为4的日志能够在系统中提交，而上个任期的日志就能够跟随着这个任期号为4的日志一起提交</strong>，如时间戳为(d)时所示，即使紧接着领导人S1崩溃，因为Raft算法选举的限制：</p>
+<blockquote>
+<p>候选人为了赢得选举必须联系集群中的大部分节点，这意味着每一个已经提交的日志条目在这些服务器节点中肯定存在于至少一个节点上。</p>
+</blockquote>
+<p>那么就会使得即使在选举出来的新的领导人中，也会有这个任期号为2的这个日志，从而避免了领导人日志覆盖提交日志的情况。</p>
+<h4 id="六、Raft怎样在集群成员变化时不停止处理客户端请求"><a href="#六、Raft怎样在集群成员变化时不停止处理客户端请求" class="headerlink" title="六、Raft怎样在集群成员变化时不停止处理客户端请求"></a>六、Raft怎样在集群成员变化时不停止处理客户端请求</h4><p>由于Raft算法和集群成员的数量的关系联系的十分紧密，所以在集群扩容的时候，要十分的谨慎，如果不使用暂停整个集群更换配置的方案，而莽撞的直接添加机器会导致种种问题，如在同一个时间内，在集群中选举出了两个领导者，在原论文中给出了这样的实例：</p>
+<p><img src="https://i.loli.net/2019/05/13/5cd93fc8d0e7376083.png" alt="raft-图4.png"></p>
+<blockquote>
+<p>直接从一种配置转到新的配置是十分不安全的，因为各个机器可能在任何的时候进行转换。在这个例子中，集群配额从 3 台机器变成了 5 台。不幸的是，存在这样的一个时间点，两个不同的领导人在同一个任期里都可以被选举成功。一个是通过旧的配置，一个通过新的配置。</p>
+</blockquote>
+<p>这个问题就衍生为Raft算法在不暂停服务的情况下，完成配置变更。因此Raft算法提出了一个称之为<strong>共同一致</strong>的方案，这个方案指出在配置变更过程中，对安全性最有影响的是<strong>新老配置互相无法感知，而配置更替也无法一蹴而就。</strong>所以在配置更替前，将集群引导入一个过渡阶段，使得适用新的配置和老的配置的机器都不会独立地处理日志。</p>
+<p><img src="https://i.loli.net/2019/05/13/5cd94e1d11f2861040.png" alt="raft-图5.png"></p>
+<p>上图是原论文的图示，我们可以看到在配置更替的中间阶段，会写入一个特殊的日志C(old,new),这个日志包含了新配置和老配置，当我们向领导者提出要采用新配置时，领导者就会在集群内传播这个特殊日志，当追随者收到这个日志的第一时间，就会应用该配置。当大多数的追随者都应用了该配置后，领导者就会回应我们已经成功应用配置了。在此以后 虽然配置没有完全更替完毕，但是即使在领导者崩溃的情况下，由于Raft算法选举限制，最终选出的新领导者也一定会包含新的配置。最终当所有追随者的配置更新完毕，如果旧的领导者并不包含在新的集群当中，旧的领导者会退位让贤，主动放弃自己的领导。</p>
+<h4 id="七、新节点对于集群的影响"><a href="#七、新节点对于集群的影响" class="headerlink" title="七、新节点对于集群的影响"></a>七、新节点对于集群的影响</h4><hr>
+<p>在新节点加入集群的时候，还有一个小补丁，我们再来看看上面图四的场景，这里先排除掉会选出多个领导者的情况，我们假设此时有一个客服端发起写入日志的请求，领导者收到后通过附加日志RPC发送给各个节点，因为此时4节点和5节点是新加入的节点，所以肯定会返回附加日志失败给领导者，那么此时如果日志要提交成功，原来的1、2、3节点必须全部复制成功，这相当于在没有机器宕机或网络异常的情况下，自行降低了系统的可用性。</p>
+<p>为了解决这个问题，又提出了一个新补丁，<strong>当有新的节点加入到集群中时，只会被动地从领导者那里接收日志，而不会参与到日志复制的决策当中，即没有投票权。</strong>当新的节点追赶上了其他的节点后，才会拥有投票权。</p>
+<h4 id="八、Raft日志快照的作用"><a href="#八、Raft日志快照的作用" class="headerlink" title="八、Raft日志快照的作用"></a>八、Raft日志快照的作用</h4><p>Raft日志快照主要有两种用途：</p>
+<ol>
+<li><p>压缩日志</p>
+<p>当系统中的日志越来越多后，会占用大量的空间，Raft算法采用了快照机制来压缩庞大的日志，在某个时间点，将整个系统的所有状态稳定地写入到可持久化存储中，然后这个时间点后的所有日志全部清除。</p>
+</li>
+<li><p>快照RPC</p>
+<p>当我们拥有了快照之后，就能通过快照直接将领导者的状态复制到那些过于落后追随者上，从而使得追随者和领导者的状态能够快速到达一致。</p>
+</li>
+</ol>
+<p>我们可以看到Raft的快照机制和Redis的持久化存储是很相像的。所以一些Redis的优化机制可以有选择地应用到Raft之中，如快照自动触发、使用fork机制来降低创建快照的资源占用、使用特殊的数据结构来保证快照的可检测性等。</p>
+<h4 id="九、Raft客户端和服务端之间的幂等操作"><a href="#九、Raft客户端和服务端之间的幂等操作" class="headerlink" title="九、Raft客户端和服务端之间的幂等操作"></a>九、Raft客户端和服务端之间的幂等操作</h4><hr>
+<p>这部分的内容实际上不太属于Raft算法，但是还是十分的重要，我在这里简单的做一点介绍。</p>
+<p>只要是通过网络进行交互，就要考虑到容错和重发，如果因为瞬间的网络波动导致客户端重发请求，而服务端如果没有正确处理请求，就会导致数据混乱的情况发生，所以这里就要引入幂等性的这个概念，幂等性是指一个操作无论执行多少遍，都会产生相同的状态，如绝对值操作就是属于幂等操作，而加减法就不属于幂等操作。</p>
+<p>而很多请求都是不属于幂等操作，所以我们需要在这些请求外设置一些限制，从而达到幂等操作的效果。<br>就拿Raft算法为例，我们需要给每一个客户端分配一个全局唯一的ID，而领导者记录每个客户端已处理的请求的最大的序号（这个序号需要在客户端组范围内是递增的），当领导者收到一个序号小于或等于已记录最大序号的请求时，就要拒绝请求并返回异常给客户端，客户端捕获异常后，自行处理。</p>
+<p>如此一来，就可以从入口和内部两方面都能够保证数据一致性和安全性。</p>
+<h4 id="十、总结"><a href="#十、总结" class="headerlink" title="十、总结"></a>十、总结</h4><hr>
+<p>这篇文章是我个人的一些对于Raft算法的理解，在写文章的过程中，发现了一些大牛的文章，这些国内的大牛（知乎上的<code>我做分布式系统</code>、TiKV的<code>唐刘</code>….）是真滴强，在我还在研究Basic Raft的时候，他们已经在Raft算法优化的路上走了很远了。看了这么多资料，就愈是觉得自己菜，所以写的就愈是艰难。如果我的理解有什么纰漏，还请不吝赐教。</p>
+
+      
+    </div>
+    <footer class="entry-meta entry-footer">
+      
+	<span class="ico-folder"></span>
+    <a class="article-category-link" href="/categories/分布式/">分布式</a>
+
+      
+  <span class="ico-tags"></span>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/分布式/">分布式</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/算法/">算法</a></li></ul>
+
+      
+            
+      
+        
+	<div id="comment">
+		<!-- 来必力City版安装代码 -->
+		<div id="lv-container" data-id="city" data-uid="MTAyMC8yOTQ4MS82MDQ5">
+		<script type="text/javascript">
+		   (function(d, s) {
+		       var j, e = d.getElementsByTagName(s)[0];
+
+		       if (typeof LivereTower === 'function') { return; }
+
+		       j = d.createElement(s);
+		       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+		       j.async = true;
+
+		       e.parentNode.insertBefore(j, e);
+		   })(document, 'script');
+		</script>
+		<noscript>为正常使用来必力评论功能请激活JavaScript</noscript>
+		</div>
+		<!-- City版安装代码已完成 -->
+	</div>
+
+
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/06/12/LSM树原理探究/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">上一篇</strong>
+      <div class="article-nav-title">
+        
+          LSM树原理探究
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/05/03/Paxos——分布式一致性算法/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">下一篇</strong>
+      <div class="article-nav-title">Paxos——分布式一致性算法</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+<!-- Table of Contents -->
+
+  <aside id="sidebar">
+    <div id="toc" class="toc-article" style="overflow-y: scroll; max-width: 28%;">
+    <strong class="toc-title">文章目录</strong>
+    
+      <ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Raft算法解读"><span class="nav-number">1.</span> <span class="nav-text">Raft算法解读</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#前言"><span class="nav-number">1.1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#一、Raft算法的本质"><span class="nav-number">1.2.</span> <span class="nav-text">一、Raft算法的本质</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#二、Raft为什么选择随机选举超时时间的机制"><span class="nav-number">1.3.</span> <span class="nav-text">二、Raft为什么选择随机选举超时时间的机制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#三、prevLogIndex、prevLogIndex、lastLogIndex、lastLogTerm都有什么用？"><span class="nav-number">1.4.</span> <span class="nav-text">三、prevLogIndex、prevLogIndex、lastLogIndex、lastLogTerm都有什么用？</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#四、Raft算法如何确保所有状态机的一致性"><span class="nav-number">1.5.</span> <span class="nav-text">四、Raft算法如何确保所有状态机的一致性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#五、Raft-提交之前任期内的日志条目的正确方式"><span class="nav-number">1.6.</span> <span class="nav-text">五、Raft 提交之前任期内的日志条目的正确方式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#六、Raft怎样在集群成员变化时不停止处理客户端请求"><span class="nav-number">1.7.</span> <span class="nav-text">六、Raft怎样在集群成员变化时不停止处理客户端请求</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#七、新节点对于集群的影响"><span class="nav-number">1.8.</span> <span class="nav-text">七、新节点对于集群的影响</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#八、Raft日志快照的作用"><span class="nav-number">1.9.</span> <span class="nav-text">八、Raft日志快照的作用</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#九、Raft客户端和服务端之间的幂等操作"><span class="nav-number">1.10.</span> <span class="nav-text">九、Raft客户端和服务端之间的幂等操作</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#十、总结"><span class="nav-number">1.11.</span> <span class="nav-text">十、总结</span></a></li></ol></li></ol>
+    
+    </div>
+  </aside>
+</section>
+        
+      </div>
+      <footer id="footer" class="site-footer">
+  
+
+  <div class="clearfix container">
+      <div class="site-info">
+	      &copy; 2020 王老魔的代码备忘录 All Rights Reserved.
+          
+            <span id="busuanzi_container_site_uv">
+              本站访客数<span id="busuanzi_value_site_uv"></span>人次  
+              本站总访问量<span id="busuanzi_value_site_pv"></span>次
+            </span>
+          
+      </div>
+      <div class="site-credit">
+        Theme by <a href="https://github.com/iTimeTraveler/hexo-theme-hiero" target="_blank">hiero</a>
+      </div>
+  </div>
+</footer>
+
+
+<!-- min height -->
+
+<script>
+    var contentdiv = document.getElementById("content");
+
+    contentdiv.style.minHeight = document.body.offsetHeight - document.getElementById("allheader").offsetHeight - document.getElementById("footer").offsetHeight + "px";
+</script>
+
+<!-- Custome JS -->
+<script src="/js/my.js"></script>
+    </div>
+    <!-- <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">home</a>
+  
+    <a href="/archives" class="mobile-nav-link">archives</a>
+  
+    <a href="/categories" class="mobile-nav-link">categories</a>
+  
+    <a href="/tags" class="mobile-nav-link">tags</a>
+  
+</nav> -->
+    
+
+<!-- mathjax config similar to math.stackexchange -->
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.js"></script>
+
+
+<script src="/js/scripts.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="/js/main.js"></script>
+
+
+
+
+
+
+
+  <div style="display: none;">
+    <script src="https://s95.cnzz.com/z_stat.php?id=1260716016&web_id=1260716016" language="JavaScript"></script>
+  </div>
+
+
+
+	<script async src="https://dnqof95d40fo6.cloudfront.net/atw7f8.js">
+	</script>
+
+
+
+
+
+
+  </div>
+
+  <a id="rocket" href="#top" class=""></a>
+  <script type="text/javascript" src="/js/totop.js" async=""></script>
+</body>
+</html>

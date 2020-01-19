@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+
+  <!-- PACE Progress Bar START -->
+  
+    <script src="https://raw.githubusercontent.com/HubSpot/pace/v1.0.2/pace.min.js"></script>
+    <link rel="stylesheet" href="https://github.com/HubSpot/pace/raw/master/themes/orange/pace-theme-flash.css">
+  
+  
+
+  <!-- PACE Progress Bar START -->
+
+  
+  <title>paxos——分布式一致性算法 | 王老魔的代码备忘录</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  
+  <meta name="keywords" content="分布式算法zookeeper">
+  
+  
+  
+  
+  <meta name="description" content="Google Chubby的作者Mike Burrows说过这个世界上只有一种一致性算法，那就是Paxos，其它的算法都是残次品。  Paxos算法问世已经有将近30年的历史了，是目前公认最有效的解决分布式场景下一致性问题的算法之一，但是缺点是比较难懂，工程化比较难。本文希望能够辅以图例和通俗易懂的实例把Paxos算法讲清楚。">
+<meta name="keywords" content="分布式,算法,zookeeper">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Paxos——分布式一致性算法">
+<meta property="og:url" content="http://yoursite.com/2019/05/03/Paxos——分布式一致性算法/index.html">
+<meta property="og:site_name" content="王老魔的代码备忘录">
+<meta property="og:description" content="Google Chubby的作者Mike Burrows说过这个世界上只有一种一致性算法，那就是Paxos，其它的算法都是残次品。  Paxos算法问世已经有将近30年的历史了，是目前公认最有效的解决分布式场景下一致性问题的算法之一，但是缺点是比较难懂，工程化比较难。本文希望能够辅以图例和通俗易懂的实例把Paxos算法讲清楚。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://i.loli.net/2019/05/03/5ccbf89b4e096.png">
+<meta property="og:image" content="https://i.loli.net/2019/05/03/5ccbf87ac9d12.png">
+<meta property="og:image" content="https://i.loli.net/2019/05/03/5ccc380c6969e.png">
+<meta property="og:image" content="https://i.loli.net/2019/05/03/5ccc3832a88d1.png">
+<meta property="og:image" content="https://i.loli.net/2019/05/03/5ccc3855cb80c.png">
+<meta property="og:image" content="https://i.loli.net/2019/05/03/5ccc386955830.png">
+<meta property="og:updated_time" content="2019-12-10T14:11:17.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Paxos——分布式一致性算法">
+<meta name="twitter:description" content="Google Chubby的作者Mike Burrows说过这个世界上只有一种一致性算法，那就是Paxos，其它的算法都是残次品。  Paxos算法问世已经有将近30年的历史了，是目前公认最有效的解决分布式场景下一致性问题的算法之一，但是缺点是比较难懂，工程化比较难。本文希望能够辅以图例和通俗易懂的实例把Paxos算法讲清楚。">
+<meta name="twitter:image" content="https://i.loli.net/2019/05/03/5ccbf89b4e096.png">
+  
+    <link rel="alternate" href="/atom.xml" title="王老魔的代码备忘录" type="application/atom+xml">
+  
+  <link rel="icon" href="/css/images/favicon.jpg">
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Montserrat:700" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,300,300italic,400italic" rel="stylesheet" type="text/css">
+  <link href="https://cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet">
+  <style type="text/css">
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/9749f0/00000000000000000001008f/27/l?subset_id=2&fvd=n5) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/90cf9f/000000000000000000010091/27/l?subset_id=2&fvd=n7) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/8a5494/000000000000000000013365/27/l?subset_id=2&fvd=n4) format("woff2");font-weight:lighter;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/d337d8/000000000000000000010095/27/l?subset_id=2&fvd=i4) format("woff2");font-weight:400;font-style:italic;}</style>
+    
+  <link rel="stylesheet" id="athemes-headings-fonts-css" href="//fonts.googleapis.com/css?family=Yanone+Kaffeesatz%3A200%2C300%2C400%2C700&amp;ver=4.6.1" type="text/css" media="all">
+  <link rel="stylesheet" href="/css/style.css">
+
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/hiero.css">
+  <link rel="stylesheet" href="/css/glyphs.css">
+  
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/my.css">
+  <!-- Google Adsense -->
+  
+</head>
+</html>
+<script>
+var themeMenus = {};
+
+  themeMenus["/"] = "首页"; 
+
+  themeMenus["/archives"] = "归档"; 
+
+  themeMenus["/categories"] = "分类"; 
+
+  themeMenus["/tags"] = "标签"; 
+
+</script>
+
+
+  <body data-spy="scroll" data-target="#toc" data-offset="50">
+
+
+  <header id="allheader" class="site-header" role="banner">
+  <div class="clearfix container">
+      <div class="site-branding">
+
+          <h1 class="site-title">
+            
+              <a href="/" title="王老魔的代码备忘录" rel="home"> 王老魔的代码备忘录 </a>
+            
+          </h1>
+
+          
+            <div class="site-description">严肃的技术博客</div>
+          
+            
+          <nav id="main-navigation" class="main-navigation" role="navigation">
+            <a class="nav-open">Menu</a>
+            <a class="nav-close">Close</a>
+            <div class="clearfix sf-menu">
+
+              <ul id="main-nav" class="nmenu sf-js-enabled">
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/">首页</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/archives">归档</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/categories">分类</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/tags">标签</a> </li>
+                    
+              </ul>
+            </div>
+          </nav>
+
+
+      </div>
+  </div>
+</header>
+
+
+  <div id="originBgDiv" style="background: #fff; width: 100%;">
+
+      <div style="max-height:600px; overflow: hidden;  display: flex; display: -webkit-flex; align-items: center;">
+        <img id="originBg" width="100%" alt src>
+      </div>
+
+  </div>
+
+  <script>
+  function setAboutIMG(){
+      var imgUrls = "css/images/pose.jpg,https://source.unsplash.com/collection/954550/1920x1080".split(",");
+      var random = Math.floor((Math.random() * imgUrls.length ));
+      if (imgUrls[random].startsWith('http') || imgUrls[random].indexOf('://') >= 0) {
+        document.getElementById("originBg").src=imgUrls[random];
+      } else {
+        document.getElementById("originBg").src='/' + imgUrls[random];
+      }
+  }
+  bgDiv=document.getElementById("originBgDiv");
+  if(location.pathname.match('about')){
+    setAboutIMG();
+    bgDiv.style.display='block';
+  }else{
+    bgDiv.style.display='none';
+  }
+  </script>
+
+
+
+  <div id="container">
+    <div id="wrap">
+            
+      <div id="content" class="outer">
+        
+          <section id="main" style="float:none;"><article id="post-Paxos——分布式一致性算法" style="width: 66%; float:left;" class="article article-type-post" itemscope itemprop="blogPost">
+  <div id="articleInner" class="clearfix post-1016 post type-post status-publish format-standard has-post-thumbnail hentry category-template-2 category-uncategorized tag-codex tag-edge-case tag-featured-image tag-image tag-template">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="thumb" itemprop="name">
+      Paxos——分布式一致性算法
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-meta">
+      
+	Posted on <a href="/2019/05/03/Paxos——分布式一致性算法/" class="article-date">
+	  <time datetime="2019-05-03T13:22:03.000Z" itemprop="datePublished">五月 3, 2019</time>
+	</a>
+
+      
+	<span id="busuanzi_container_page_pv">
+	  本文总阅读量<span id="busuanzi_value_page_pv"></span>次
+	</span>
+
+    </div>
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p><em>Google Chubby的作者Mike Burrows说过这个世界上只有一种一致性算法，那就是Paxos，其它的算法都是残次品。</em></p>
+</blockquote>
+<p>Paxos算法问世已经有将近30年的历史了，是目前公认最有效的解决分布式场景下一致性问题的算法之一，但是缺点是比较难懂，工程化比较难。本文希望能够辅以图例和通俗易懂的实例把Paxos算法讲清楚。</p>
+<a id="more"></a> 
+<h4 id="Paxos算法的价值"><a href="#Paxos算法的价值" class="headerlink" title="Paxos算法的价值"></a>Paxos算法的价值</h4><hr>
+<p>在分布式系统中，在异步通讯的过程中，总会发生网络波动、机器宕机等情况，那么如何在这样复杂的情况下，<strong>快速且安全的就某一数值达成一致</strong>呢？Paxos算法主要就是解决此类问题，在布式锁、主从复制、命名服务、分布式协调等常见场景下，Paxos算法都有着广泛的应用。</p>
+<h4 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h4><hr>
+<p><strong>参与角色</strong></p>
+<p>在Paxos算法中，所有的参与者被分为了以下几个角色</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">角色</th>
+<th style="text-align:center">分工</th>
+<th style="text-align:center">参与决策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">Proposer</td>
+<td style="text-align:center">提出提案，提案:[编号Id,提议的Value]</td>
+<td style="text-align:center">√</td>
+</tr>
+<tr>
+<td style="text-align:center">Acceptor</td>
+<td style="text-align:center">接收提案，批准/拒绝提案，当提案被大多数的Acceptor(Quorum)批准后即为被选定的提案(Chosen)</td>
+<td style="text-align:center">√</td>
+</tr>
+<tr>
+<td style="text-align:center">Learner</td>
+<td style="text-align:center">学习(Learn)最新被选定的提案</td>
+<td style="text-align:center">×</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>提案：提案是由编号及Value组成，Paxos算法需要我们保证提案的编号Id全局唯一有序（具体有很多种实现，不在本文的讨论范围内）。</li>
+<li>Quorum：直译为法定人数，在Paxos中意为任意两个Quorum都包含至少一个公共成员，可以理解为包含Acceptor集合中的大多数成员。如一共有2F+1位Acceptor，则Quorum人数为F+1位。</li>
+<li>Proposer、Acceptor、Learner只是角色的分工，在具体实现中，一个进程可能担当不止一种角色。</li>
+</ul>
+<p><strong>Paxos算法正确的必要条件</strong></p>
+<p>现在将算法的参与者分为了这样三个角色，那么是为了让他们完成什么样的工作目标呢？</p>
+<blockquote>
+<p>一个分布式算法有两个最重要的属性：活性、安全性</p>
+</blockquote>
+<ul>
+<li>活性意为“预期的事情最终一定会发生”，最终一致性就是一种活性。</li>
+<li>安全性意为违背了安全性规则，则系统会发生损失。</li>
+</ul>
+<p>我们可以从这两个方面来考察Paxos算法的正确性</p>
+<p>活性：</p>
+<p>​      保证最终有一个提案会被选定，当提案被选定后，进程最终最终也能获取到被选定的提案。</p>
+<p>安全性：</p>
+<ul>
+<li>提案(value)只有在被 proposers 提出后才能被批准。</li>
+<li>在一次 Paxos 算法的执行实例中，只批准(chosen)一个 value。</li>
+<li>learners 只能获得被批准(chosen)的 value。</li>
+</ul>
+<p>那么我们下面来看看具体的算法流程</p>
+<h4 id="算法流程"><a href="#算法流程" class="headerlink" title="算法流程"></a>算法流程</h4><hr>
+<blockquote>
+<p>算法描述来自于倪超《从Paxos到ZooKeeper分布式一致性原理与实践》</p>
+</blockquote>
+<h5 id="提案的提出和批准"><a href="#提案的提出和批准" class="headerlink" title="提案的提出和批准"></a>提案的提出和批准</h5><ul>
+<li><p>阶段一</p>
+<ol>
+<li>Proposer选择一个提案编号N，然后向半数以上的Acceptor发送编号为N的Prepare请求。</li>
+<li>如果一个Acceptor收到一个编号为N的Prepare请求，且N大于该Acceptor已经响应过的所有Prepare请求的编号，那么它就会将它已经接受过的编号最大的提案（如果有的话）作为响应反馈给Proposer，同时该Acceptor承诺不再接受任何编号小于N的提案。</li>
+</ol>
+</li>
+<li><p>阶段二</p>
+<ol>
+<li><p>如果Proposer收到半数以上Acceptor对其发出的编号为N的Prepare请求的响应，那么它就会发送一个针对[N,V]提案的Accept请求给半数以上的Acceptor。注意：V就是收到的响应中编号最大的提案的value，如果响应中不包含任何提案，那么V就由Proposer自己决定。</p>
+</li>
+<li><p>如果Acceptor收到一个针对编号为N的提案的Accept请求，只要该Acceptor没有对编号大于N的Prepare请求做出过响应，它就接受该提案。</p>
+</li>
+</ol>
+</li>
+</ul>
+<h5 id="提案的发布"><a href="#提案的发布" class="headerlink" title="提案的发布"></a>提案的发布</h5><ol>
+<li>acceptors需要将accept消息发送给learners的一个子集，然后由这些learners去通知所有learners。</li>
+<li>但是由于消息传递的不确定性，可能会没有任何learner获得了决议批准的消息。当learners需要了解决议通过情况时，可以让一个proposer重新进行一次提案。注意一个learner可能兼任proposer。</li>
+</ol>
+<p>干巴巴的算法描述可能比较难以理解，所以从<a href="http://codemacro.com/2014/10/15/explain-poxos/" target="_blank" rel="noopener">图解分布式一致性协议Paxos</a>这里借来一个很简明的图来辅助理解。</p>
+<p><a href="https://i.loli.net/2019/05/03/5ccbf89b4e096.png" target="_blank" rel="noopener"><img src="https://i.loli.net/2019/05/03/5ccbf89b4e096.png" alt="图一"></a></p>
+<p>从上图看到,作为Acceptor只需要存储批准/保证过的提案的最大编号(MaxN)，批准过的提案的最大编号(AcceptN)，批准过的提案的Value值(AcceptV)，然后通过阶段一(2)和阶段二(2)的两种规则进行对提案的审批，即能够保证审批的安全性。</p>
+<p>而Proposer需要保证在阶段一(1)时提出的提案编号唯一且单调递增，而在阶段二(1)时只对获取到了足够多的保证（即获得了大多数Acceptor对Proposer的保证）的提案进行提交，即能够保证提案申请的安全性。</p>
+<p>那么为什么这样能够满足上面所述的分布式算法的安全性呢？这个要从Paxos算法的推导来看。<a href="https://zh.wikipedia.org/wiki/Paxos%E7%AE%97%E6%B3%95" target="_blank" rel="noopener">完整的推导过程</a>可以在wikipedia上看到。</p>
+<p>下面我来谈一谈我的理解，在推导过程中有这么几个重要的约束：</p>
+<blockquote>
+<p>P1：一个 acceptor 必须接受（accept）第一次收到的提案。</p>
+<p>P1a：当且仅当acceptor没有回应过编号大于n的prepare请求时，acceptor接受（accept）编号为n的提案。</p>
+<p>P2：一旦一个具有 value v 的提案被批准（chosen），那么之后批准（chosen）的提案必须具有 value v。</p>
+<p>P2a：一旦一个具有 value v 的提案被批准（chosen），那么之后任何 acceptor 再次接受（accept）的提案必须具有 value v。</p>
+<p>P2b：一旦一个具有 value v 的提案被批准（chosen），那么以后任何 proposer 提出的提案必须具有 value v。</p>
+<p>P2c：如果一个编号为 n 的提案具有 value v，那么存在一个多数派，要么他们中所有人都没有接受（accept）编号小于 n 的任何提案，要么他们已经接受（accept）的所有编号小于 n 的提案中编号最大的那个提案具有 value v。</p>
+</blockquote>
+<p>他们之间的关系可以用下图来说明</p>
+<p><a href="https://i.loli.net/2019/05/03/5ccbf87ac9d12.png" target="_blank" rel="noopener"><img src="https://i.loli.net/2019/05/03/5ccbf87ac9d12.png" alt="图二.png"></a></p>
+<p>当Acceptor仅可批准一个提案时，仅依靠P1，也是能够只批准出一个Value的，但是在这种情况下，很有可能需要多次重复投票过程才能够达到一致性的状态，也就是说虽然能够保证安全性，但是牺牲了部分的活性。如下图所示：</p>
+<p><a href="https://i.loli.net/2019/05/03/5ccc380c6969e.png" target="_blank" rel="noopener"><img src="https://i.loli.net/2019/05/03/5ccc380c6969e.png" alt="图三.png"></a></p>
+<p>Proposer总是能够优先获得同机房内的Acceptor的批准，但是很难获得其他机房的Acceptor的批准，这时ProposerA、ProposerB、ProposerC各获得一票，每个Proposer的提案都没有通过，此时Proposer只能生成编号更大的提案，以期许能够获得大多数的Acceptor(2个)的批准，也许未来不久，某个lucky dog最终能够获得大多数的Acceptor的批准，但是我们已经等的花儿都谢了。</p>
+<p>所以为了能够快速到达一致性，又引入了P2c和P1a，在P1a中解除了Acceptor只能批准一个提案的限制，但是增加了对于批准提案的编号的限制，在P2中增加了对Proposer提出提案的Value值的限制，这两个限制带来的直接效果有两个：</p>
+<ol>
+<li>原本Proposer只需要和Acceptor交互一次，现在变成了<strong>两次</strong>，在Proposer正式提交提案前，Proposer要先获得大多数的Acceptor的状态（prepare请求），以确保提出的提案时，没有已经通过了的提案。因为是大多数的Acceptor，所以如果有已审批的提案，那么一定能够通过这批Prepare请求获知，如果得知已经有审批过的提案，那么代表Proposer已获知本次Paxos执行实例中的决议，并将自己的提案的Value值替换为已审批过的提案的Value值，保证安全性。</li>
+<li>因为Proposer在正式提交提案前，已经经过了“严格”的问询和保证，Acceptor也会对审批的编号做审核，所以即使Acceptor能够批准多个提案，但是会保证审批通过的提案的值都具有相同的Value值。从而保证了安全性。</li>
+</ol>
+<p>这样讲可能还是比较难以理解，我们现在就上面那个例子做一个图示，分别看看选出提案为A、和提案为B的流程。</p>
+<ul>
+<li>P代表Acceptor对Proposer的Promise</li>
+<li>A代表Acceptor对Proposer提案的Accept</li>
+<li>PE代表保证失败，即图一中的<error1></error1></li>
+<li>AE代表审批失败，即图一中的<error2></error2></li>
+<li>提案编号由时间戳和机器Id组成，如编号为1.2，则代表在时间戳为1时，机器Id2提出的提案。</li>
+<li>字母右边的数字代表提案编号，如P1.1代表Acceptor对于编号为1.1提案的Promise</li>
+<li>中括号[]内为回应内容，如P1.1[1.2:A]代表Acceptor对于编号1.1提案的Promise，并回应“我已经审批通过了编号为1.2，值为A”的提案。</li>
+</ul>
+<p><img src="https://i.loli.net/2019/05/03/5ccc3832a88d1.png" alt="图四.png"></p>
+<p>如图四所示，最终形成了值为A的提案。</p>
+<p><img src="https://i.loli.net/2019/05/03/5ccc3855cb80c.png" alt="图五.png"></p>
+<p>如图五所示，最终形成了值为B的提案。</p>
+<p>这时候停下来思考一下，严格来说，上面描述的牺牲活性问题并没有解决，只是降低了发生了的概率，在极端情况下还是能够发生一种类似于“活锁”的状态的。如下图所示</p>
+<p><img src="https://i.loli.net/2019/05/03/5ccc386955830.png" alt="图六"></p>
+<p>在极端情况下，这种循环会一直进行下去。所以为了解决这种问题，又提出了Multi-Paxos算法，Multi-Paxos具体算法在这里不做陈述，它是在Proposer中又搞了一个Leader的概念，在初期，所有的Proposer中竞选出一个Leader，<strong>然后只有Leader能够向Acceptor提出提案</strong>，当Leader发生问题时，再竞选一个Leader出来，没有了Proposer的竞争，两阶段也变成了一阶段，提高了效率，也解决了活锁的问题。但是仔细想想，竞选Leader的过程中也可能会发生活锁的，我估计这也是Raft算法被提出来的真正原因（狗头），毕竟最后绕了一大圈，最终还是搞出了单点的Leader出来进行管理，还不如用上面P1+重试的机制选出Leader，效率平时是差不多的，仅在选举Leader时会比较慢而已。</p>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><hr>
+<p>本文分析了Paxos算法的应用价值和具体实现原理，希望能让大家在学习Paxos算法的过程中能够少掉一点头发。后续可能还会更新我对Raft算法的理解。</p>
+
+      
+    </div>
+    <footer class="entry-meta entry-footer">
+      
+	<span class="ico-folder"></span>
+    <a class="article-category-link" href="/categories/分布式/">分布式</a>
+
+      
+  <span class="ico-tags"></span>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/zookeeper/">zookeeper</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/分布式/">分布式</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/算法/">算法</a></li></ul>
+
+      
+            
+      
+        
+	<div id="comment">
+		<!-- 来必力City版安装代码 -->
+		<div id="lv-container" data-id="city" data-uid="MTAyMC8yOTQ4MS82MDQ5">
+		<script type="text/javascript">
+		   (function(d, s) {
+		       var j, e = d.getElementsByTagName(s)[0];
+
+		       if (typeof LivereTower === 'function') { return; }
+
+		       j = d.createElement(s);
+		       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+		       j.async = true;
+
+		       e.parentNode.insertBefore(j, e);
+		   })(document, 'script');
+		</script>
+		<noscript>为正常使用来必力评论功能请激活JavaScript</noscript>
+		</div>
+		<!-- City版安装代码已完成 -->
+	</div>
+
+
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/05/26/Raft算法注解九记/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">上一篇</strong>
+      <div class="article-nav-title">
+        
+          Raft算法注解九记
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/04/25/Redis数据结构及对象（下）/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">下一篇</strong>
+      <div class="article-nav-title">Redis数据结构及对象（下）</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+<!-- Table of Contents -->
+
+  <aside id="sidebar">
+    <div id="toc" class="toc-article" style="overflow-y: scroll; max-width: 28%;">
+    <strong class="toc-title">文章目录</strong>
+    
+      <ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#Paxos算法的价值"><span class="nav-number">1.</span> <span class="nav-text">Paxos算法的价值</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#基本概念"><span class="nav-number">2.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#算法流程"><span class="nav-number">3.</span> <span class="nav-text">算法流程</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#提案的提出和批准"><span class="nav-number">3.1.</span> <span class="nav-text">提案的提出和批准</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#提案的发布"><span class="nav-number">3.2.</span> <span class="nav-text">提案的发布</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol>
+    
+    </div>
+  </aside>
+</section>
+        
+      </div>
+      <footer id="footer" class="site-footer">
+  
+
+  <div class="clearfix container">
+      <div class="site-info">
+	      &copy; 2020 王老魔的代码备忘录 All Rights Reserved.
+          
+            <span id="busuanzi_container_site_uv">
+              本站访客数<span id="busuanzi_value_site_uv"></span>人次  
+              本站总访问量<span id="busuanzi_value_site_pv"></span>次
+            </span>
+          
+      </div>
+      <div class="site-credit">
+        Theme by <a href="https://github.com/iTimeTraveler/hexo-theme-hiero" target="_blank">hiero</a>
+      </div>
+  </div>
+</footer>
+
+
+<!-- min height -->
+
+<script>
+    var contentdiv = document.getElementById("content");
+
+    contentdiv.style.minHeight = document.body.offsetHeight - document.getElementById("allheader").offsetHeight - document.getElementById("footer").offsetHeight + "px";
+</script>
+
+<!-- Custome JS -->
+<script src="/js/my.js"></script>
+    </div>
+    <!-- <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">home</a>
+  
+    <a href="/archives" class="mobile-nav-link">archives</a>
+  
+    <a href="/categories" class="mobile-nav-link">categories</a>
+  
+    <a href="/tags" class="mobile-nav-link">tags</a>
+  
+</nav> -->
+    
+
+<!-- mathjax config similar to math.stackexchange -->
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.js"></script>
+
+
+<script src="/js/scripts.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="/js/main.js"></script>
+
+
+
+
+
+
+
+  <div style="display: none;">
+    <script src="https://s95.cnzz.com/z_stat.php?id=1260716016&web_id=1260716016" language="JavaScript"></script>
+  </div>
+
+
+
+	<script async src="https://dnqof95d40fo6.cloudfront.net/atw7f8.js">
+	</script>
+
+
+
+
+
+
+  </div>
+
+  <a id="rocket" href="#top" class=""></a>
+  <script type="text/javascript" src="/js/totop.js" async=""></script>
+</body>
+</html>

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+
+  <!-- PACE Progress Bar START -->
+  
+    <script src="https://raw.githubusercontent.com/HubSpot/pace/v1.0.2/pace.min.js"></script>
+    <link rel="stylesheet" href="https://github.com/HubSpot/pace/raw/master/themes/orange/pace-theme-flash.css">
+  
+  
+
+  <!-- PACE Progress Bar START -->
+
+  
+  <title>lru算法及其优化策略——mysql篇 | 王老魔的代码备忘录</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  
+  <meta name="keywords" content="算法mysql">
+  
+  
+  
+  
+  <meta name="description" content="LRU算法及其优化策略——Mysql篇 在上一篇文章中，介绍了LRU算法在Redis之中的应用，本篇继续给各位道友介绍在Mysql的InnobDB引擎中，是如何使用LRU算法的。">
+<meta name="keywords" content="算法,mysql">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LRU算法及其优化策略——Mysql篇">
+<meta property="og:url" content="http://yoursite.com/2020/01/16/LRU算法及其优化策略——Mysql篇/index.html">
+<meta property="og:site_name" content="王老魔的代码备忘录">
+<meta property="og:description" content="LRU算法及其优化策略——Mysql篇 在上一篇文章中，介绍了LRU算法在Redis之中的应用，本篇继续给各位道友介绍在Mysql的InnobDB引擎中，是如何使用LRU算法的。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://i.loli.net/2020/01/19/ZT3nUY4RAt9kyV8.jpg">
+<meta property="og:image" content="https://i.loli.net/2020/01/19/POtYQoSNvRXscfA.png">
+<meta property="og:image" content="https://i.loli.net/2020/01/19/RLfP4xoHcpMrKqQ.png">
+<meta property="og:updated_time" content="2020-01-19T08:56:55.583Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LRU算法及其优化策略——Mysql篇">
+<meta name="twitter:description" content="LRU算法及其优化策略——Mysql篇 在上一篇文章中，介绍了LRU算法在Redis之中的应用，本篇继续给各位道友介绍在Mysql的InnobDB引擎中，是如何使用LRU算法的。">
+<meta name="twitter:image" content="https://i.loli.net/2020/01/19/ZT3nUY4RAt9kyV8.jpg">
+  
+    <link rel="alternate" href="/atom.xml" title="王老魔的代码备忘录" type="application/atom+xml">
+  
+  <link rel="icon" href="/css/images/favicon.jpg">
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Montserrat:700" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,300,300italic,400italic" rel="stylesheet" type="text/css">
+  <link href="https://cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet">
+  <style type="text/css">
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/9749f0/00000000000000000001008f/27/l?subset_id=2&fvd=n5) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/90cf9f/000000000000000000010091/27/l?subset_id=2&fvd=n7) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/8a5494/000000000000000000013365/27/l?subset_id=2&fvd=n4) format("woff2");font-weight:lighter;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/d337d8/000000000000000000010095/27/l?subset_id=2&fvd=i4) format("woff2");font-weight:400;font-style:italic;}</style>
+    
+  <link rel="stylesheet" id="athemes-headings-fonts-css" href="//fonts.googleapis.com/css?family=Yanone+Kaffeesatz%3A200%2C300%2C400%2C700&amp;ver=4.6.1" type="text/css" media="all">
+  <link rel="stylesheet" href="/css/style.css">
+
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/hiero.css">
+  <link rel="stylesheet" href="/css/glyphs.css">
+  
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/my.css">
+  <!-- Google Adsense -->
+  
+</head>
+</html>
+<script>
+var themeMenus = {};
+
+  themeMenus["/"] = "首页"; 
+
+  themeMenus["/archives"] = "归档"; 
+
+  themeMenus["/categories"] = "分类"; 
+
+  themeMenus["/tags"] = "标签"; 
+
+</script>
+
+
+  <body data-spy="scroll" data-target="#toc" data-offset="50">
+
+
+  <header id="allheader" class="site-header" role="banner">
+  <div class="clearfix container">
+      <div class="site-branding">
+
+          <h1 class="site-title">
+            
+              <a href="/" title="王老魔的代码备忘录" rel="home"> 王老魔的代码备忘录 </a>
+            
+          </h1>
+
+          
+            <div class="site-description">严肃的技术博客</div>
+          
+            
+          <nav id="main-navigation" class="main-navigation" role="navigation">
+            <a class="nav-open">Menu</a>
+            <a class="nav-close">Close</a>
+            <div class="clearfix sf-menu">
+
+              <ul id="main-nav" class="nmenu sf-js-enabled">
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/">首页</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/archives">归档</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/categories">分类</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/tags">标签</a> </li>
+                    
+              </ul>
+            </div>
+          </nav>
+
+
+      </div>
+  </div>
+</header>
+
+
+  <div id="originBgDiv" style="background: #fff; width: 100%;">
+
+      <div style="max-height:600px; overflow: hidden;  display: flex; display: -webkit-flex; align-items: center;">
+        <img id="originBg" width="100%" alt src>
+      </div>
+
+  </div>
+
+  <script>
+  function setAboutIMG(){
+      var imgUrls = "css/images/pose.jpg,https://source.unsplash.com/collection/954550/1920x1080".split(",");
+      var random = Math.floor((Math.random() * imgUrls.length ));
+      if (imgUrls[random].startsWith('http') || imgUrls[random].indexOf('://') >= 0) {
+        document.getElementById("originBg").src=imgUrls[random];
+      } else {
+        document.getElementById("originBg").src='/' + imgUrls[random];
+      }
+  }
+  bgDiv=document.getElementById("originBgDiv");
+  if(location.pathname.match('about')){
+    setAboutIMG();
+    bgDiv.style.display='block';
+  }else{
+    bgDiv.style.display='none';
+  }
+  </script>
+
+
+
+  <div id="container">
+    <div id="wrap">
+            
+      <div id="content" class="outer">
+        
+          <section id="main" style="float:none;"><article id="post-LRU算法及其优化策略——Mysql篇" style="width: 66%; float:left;" class="article article-type-post" itemscope itemprop="blogPost">
+  <div id="articleInner" class="clearfix post-1016 post type-post status-publish format-standard has-post-thumbnail hentry category-template-2 category-uncategorized tag-codex tag-edge-case tag-featured-image tag-image tag-template">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="thumb" itemprop="name">
+      LRU算法及其优化策略——Mysql篇
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-meta">
+      
+	Posted on <a href="/2020/01/16/LRU算法及其优化策略——Mysql篇/" class="article-date">
+	  <time datetime="2020-01-16T08:34:00.000Z" itemprop="datePublished">一月 16, 2020</time>
+	</a>
+
+      
+	<span id="busuanzi_container_page_pv">
+	  本文总阅读量<span id="busuanzi_value_page_pv"></span>次
+	</span>
+
+    </div>
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="LRU算法及其优化策略——Mysql篇"><a href="#LRU算法及其优化策略——Mysql篇" class="headerlink" title="LRU算法及其优化策略——Mysql篇"></a>LRU算法及其优化策略——Mysql篇</h1><p><img src="https://i.loli.net/2020/01/19/ZT3nUY4RAt9kyV8.jpg" alt="LRU算法及其优化策略——Mysql篇.jpg"></p>
+<p>在上一篇文章中，介绍了LRU算法在Redis之中的应用，本篇继续给各位道友介绍在Mysql的InnobDB引擎中，是如何使用LRU算法的。<br><a id="more"></a> </p>
+<h2 id="InnoDB缓冲池"><a href="#InnoDB缓冲池" class="headerlink" title="InnoDB缓冲池"></a>InnoDB缓冲池</h2><h3 id="缓存池简介及内存结构"><a href="#缓存池简介及内存结构" class="headerlink" title="缓存池简介及内存结构"></a>缓存池简介及内存结构</h3><p>首先来介绍下InnoDB的缓冲池，缓冲池简单来说就是一块内存区域，该区域内缓存着InnoDB访问存储在磁盘的数据和索引信息。缓冲池有两个作用，一是提高了大容量读取操作的效率，二是提高了缓存管理的效率。时调配缓存池参数，使得经常访问的参数能够保留在缓存池中是一个很重要的Mysql优化手段。</p>
+<p>一个InnoDB缓存池的内存结构图如下图所示：</p>
+<p><img src="https://i.loli.net/2020/01/19/POtYQoSNvRXscfA.png" alt="缓冲池.png"></p>
+<p><em>图源自《Mysql技术内幕：InnoDB存储引擎》</em></p>
+<h3 id="缓存池状态"><a href="#缓存池状态" class="headerlink" title="缓存池状态"></a>缓存池状态</h3><p>我们可以通过<a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-standard-monitor.html" target="_blank" rel="noopener">SHOW ENGINE INNODB STATUS</a>命令来查看缓存池在InnoDB引擎中的表现：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">----------------------</span><br><span class="line">BUFFER POOL AND MEMORY</span><br><span class="line">----------------------</span><br><span class="line">Total memory allocated 6593445888;                       // 为缓冲池分配的总内存(字节)</span><br><span class="line">Dictionary memory allocated 7687783                      // 为InnoDB数据字典分配的总内存（字节）</span><br><span class="line">Buffer pool size   393208                                // 分配给缓冲池的页面总大小（页）</span><br><span class="line">Free buffers       352642                                // 缓冲池空闲列表的页面总大小（页）</span><br><span class="line">Database pages     40485                                 // 缓冲池LRU列表的页面总大小。(页)</span><br><span class="line">Old database pages 14967                                 // 缓冲池旧LRU子列表的页面总大小（页）</span><br><span class="line">Modified db pages  4                                     // 缓冲池中当前修改的页面数。</span><br><span class="line">Pending reads 0                                          // 等待读入缓冲池的缓冲池页面数。</span><br><span class="line">Pending writes: LRU 0, flush list 0, single page 0       // 从LRU列表的底部开始写入的缓冲池中的旧脏页数。                                                          // 检查点期间要刷新的缓冲池页面数。</span><br><span class="line">                                                         // 缓冲池中暂挂的独立页面写入数。</span><br><span class="line">Pages made young 5, not young 0                          // 缓冲池LRU列表中变年轻的页面总数</span><br><span class="line">                                                         // 缓冲池LRU列表中未设置为年轻的页面总数</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>完整的缓存池状态信息可以在这里找到：<a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-information-schema-buffer-pool-tables.html#innodb-information-schema-buffer-pool-stats-example" target="_blank" rel="noopener">缓存池状态信息</a></p>
+<h3 id="缓存池的数量和大小"><a href="#缓存池的数量和大小" class="headerlink" title="缓存池的数量和大小"></a>缓存池的数量和大小</h3><p>为了避免多个线程读写缓存池引起的并发冲突，InnoDB可以配置多个缓存池，由参数<code>innodb_buffer_pool_instances</code>指定，内部使用散列表进行分配和管理。</p>
+<p>通常来说，当缓存池的大小越大，则Mysql表现的越像一个内存数据库。我们可以在启动时或者运行时通过<code>innodb_buffer_pool_size</code>参数动态地调整缓存池的大小，需要注意的<code>innodb_buffer_pool_size</code>的大小会自动的调整为InnoDB缓存池块<code>innodb-buffer-pool-chunk-size</code>(默认为128M)的整倍数。</p>
+<blockquote>
+<p>为避免潜在的性能问题，缓存池大小/缓存池块大小（<code>innodb_buffer_pool_size</code>/ <code>innodb_buffer_pool_chunk_size</code>）的数量不应超过1000。</p>
+</blockquote>
+<h3 id="缓存池的刷新"><a href="#缓存池的刷新" class="headerlink" title="缓存池的刷新"></a>缓存池的刷新</h3><p>说到缓存，必须有缓存刷新机制，即剔除缓存中的脏页（已经被修改，但是并未刷入磁盘中的数据页）。</p>
+<p>在5.7以上的版本中，InnoDB会启动默认四个线程并发的来执行缓存池中脏页的清除。脏页的清除有两种模式：</p>
+<ol>
+<li><strong>普通模式</strong>，当缓存池中的脏页比例超过<code>innodb_max_dirty_pages_pct_lwm</code>(低水平线默认为25%)时，启动普通模式将脏页刷新到磁盘中。</li>
+<li><strong>aggressively flushes</strong>（激进模式？），当缓存池中的脏页比例超过<code>innodb_max_dirty_pages_pct</code>(默认为75%)时，启动更快的刷新模式，尽快的将脏页刷新到磁盘当中。</li>
+</ol>
+<h3 id="缓存池的预读（Prefetching-）"><a href="#缓存池的预读（Prefetching-）" class="headerlink" title="缓存池的预读（Prefetching ）"></a>缓存池的预读（Prefetching ）</h3><p>InnoDB的缓存池不仅是被动地缓存，而且会异步地预先从磁盘中读取数据页，有两种方式：</p>
+<ul>
+<li><p><strong>线性</strong>：根据缓存池的访问数据的顺序来预读，当读取某一区（Extend）中的页（Page）的数据超过<code>innodb_read_ahead_threshold</code>时，则将该区中剩余的所有页都加载到缓存池中。</p>
+</li>
+<li><p><strong>随机</strong>：根据缓存池中的已有页面进行预读，而不管他们的顺序，当发现缓存池中某一区内页的数量超过了<code>innodb_random_read_ahead</code>，则将改区中剩余的所有页都加载到缓存池中。</p>
+</li>
+</ul>
+<h2 id="缓存池LRU算法"><a href="#缓存池LRU算法" class="headerlink" title="缓存池LRU算法"></a>缓存池LRU算法</h2><p>在了解了InnoDB的缓存池概念后，我们来看看背后支持缓存池工作的算法。</p>
+<p>当我们使用朴素的LRU算法时，会发现如果有批量的操作时，会打乱缓存数据，大大降低了缓存命中率。而在Mysql当中会有大量的预读及全表扫描的操作，为了使得真真的热数据留在内存中，InnoDB缓存池采用了一种变种的LRU算法，有些像我在<a href="https://juejin.im/post/5e2023e0f265da3df12042b3" target="_blank" rel="noopener">这篇文章</a>中写到的LRU-K算法。</p>
+<p>新进入缓存池的页并不会直接进入LRU链表的头部，而是插入到距离链表尾3/8的位置（可以由innodb_old_blocks_pct参数进行配置），我们将距离链表尾3/8以上的位置称为<code>新子列表</code>，以下的位置称为<code>旧子列表</code>，数据在链表中自底而上称为<code>变年轻</code>，反之称为<code>变老</code>。下图是一个示意图：</p>
+<p><img src="https://i.loli.net/2020/01/19/RLfP4xoHcpMrKqQ.png" alt="innodb-buffer-pool-list.png"></p>
+<ul>
+<li><p><strong>变年轻</strong></p>
+<p>变年轻分为两种情况，第一种是来源于用户的操作而需要读取页面，此时会直接使该页直接移至新子列表链表头部。第二种是来源于数据库内部的预读操作，则在距离插入innodb_old_blocks_time（默认为1000ms）的时间内，即使访问了该页，该页也不会别移到LRU链表的头部。</p>
+<p>也就是说，如果是来源于用户的操作，则最起码需要两次操作才能变年轻。而如果是预读操作，则需要加上一个等待期限。</p>
+</li>
+<li><p><strong>变老</strong></p>
+<p>随着链表数据的替换和访问，整个列表中的数据会自然的变老。最终最老的页面会从尾部逐出。</p>
+</li>
+</ul>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本文介绍了Mysql的InnoDB引擎的缓存池的概念，及其对于LRU算法的改造。介绍了另一种解决LRU列表被污染的解决方案。</p>
+
+      
+    </div>
+    <footer class="entry-meta entry-footer">
+      
+	<span class="ico-folder"></span>
+    <a class="article-category-link" href="/categories/mysql/">mysql</a>
+
+      
+  <span class="ico-tags"></span>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/">mysql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/算法/">算法</a></li></ul>
+
+      
+            
+      
+        
+	<div id="comment">
+		<!-- 来必力City版安装代码 -->
+		<div id="lv-container" data-id="city" data-uid="MTAyMC8yOTQ4MS82MDQ5">
+		<script type="text/javascript">
+		   (function(d, s) {
+		       var j, e = d.getElementsByTagName(s)[0];
+
+		       if (typeof LivereTower === 'function') { return; }
+
+		       j = d.createElement(s);
+		       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+		       j.async = true;
+
+		       e.parentNode.insertBefore(j, e);
+		   })(document, 'script');
+		</script>
+		<noscript>为正常使用来必力评论功能请激活JavaScript</noscript>
+		</div>
+		<!-- City版安装代码已完成 -->
+	</div>
+
+
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/01/16/LRU算法及其优化策略——算法篇/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">上一篇</strong>
+      <div class="article-nav-title">
+        
+          LRU算法及其优化策略——算法篇
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/12/31/Dubbo SPI源码分析/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">下一篇</strong>
+      <div class="article-nav-title">Dubbo SPI源码分析</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+<!-- Table of Contents -->
+
+  <aside id="sidebar">
+    <div id="toc" class="toc-article" style="overflow-y: scroll; max-width: 28%;">
+    <strong class="toc-title">文章目录</strong>
+    
+      <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#LRU算法及其优化策略——Mysql篇"><span class="nav-number">1.</span> <span class="nav-text">LRU算法及其优化策略——Mysql篇</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#InnoDB缓冲池"><span class="nav-number">1.1.</span> <span class="nav-text">InnoDB缓冲池</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存池简介及内存结构"><span class="nav-number">1.1.1.</span> <span class="nav-text">缓存池简介及内存结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存池状态"><span class="nav-number">1.1.2.</span> <span class="nav-text">缓存池状态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存池的数量和大小"><span class="nav-number">1.1.3.</span> <span class="nav-text">缓存池的数量和大小</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存池的刷新"><span class="nav-number">1.1.4.</span> <span class="nav-text">缓存池的刷新</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存池的预读（Prefetching-）"><span class="nav-number">1.1.5.</span> <span class="nav-text">缓存池的预读（Prefetching ）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存池LRU算法"><span class="nav-number">1.2.</span> <span class="nav-text">缓存池LRU算法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">1.3.</span> <span class="nav-text">总结</span></a></li></ol></li></ol>
+    
+    </div>
+  </aside>
+</section>
+        
+      </div>
+      <footer id="footer" class="site-footer">
+  
+
+  <div class="clearfix container">
+      <div class="site-info">
+	      &copy; 2020 王老魔的代码备忘录 All Rights Reserved.
+          
+            <span id="busuanzi_container_site_uv">
+              本站访客数<span id="busuanzi_value_site_uv"></span>人次  
+              本站总访问量<span id="busuanzi_value_site_pv"></span>次
+            </span>
+          
+      </div>
+      <div class="site-credit">
+        Theme by <a href="https://github.com/iTimeTraveler/hexo-theme-hiero" target="_blank">hiero</a>
+      </div>
+  </div>
+</footer>
+
+
+<!-- min height -->
+
+<script>
+    var contentdiv = document.getElementById("content");
+
+    contentdiv.style.minHeight = document.body.offsetHeight - document.getElementById("allheader").offsetHeight - document.getElementById("footer").offsetHeight + "px";
+</script>
+
+<!-- Custome JS -->
+<script src="/js/my.js"></script>
+    </div>
+    <!-- <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">home</a>
+  
+    <a href="/archives" class="mobile-nav-link">archives</a>
+  
+    <a href="/categories" class="mobile-nav-link">categories</a>
+  
+    <a href="/tags" class="mobile-nav-link">tags</a>
+  
+</nav> -->
+    
+
+<!-- mathjax config similar to math.stackexchange -->
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.js"></script>
+
+
+<script src="/js/scripts.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="/js/main.js"></script>
+
+
+
+
+
+
+
+  <div style="display: none;">
+    <script src="https://s95.cnzz.com/z_stat.php?id=1260716016&web_id=1260716016" language="JavaScript"></script>
+  </div>
+
+
+
+	<script async src="https://dnqof95d40fo6.cloudfront.net/atw7f8.js">
+	</script>
+
+
+
+
+
+
+  </div>
+
+  <a id="rocket" href="#top" class=""></a>
+  <script type="text/javascript" src="/js/totop.js" async=""></script>
+</body>
+</html>

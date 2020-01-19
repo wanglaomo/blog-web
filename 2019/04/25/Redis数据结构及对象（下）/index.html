@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+
+  <!-- PACE Progress Bar START -->
+  
+    <script src="https://raw.githubusercontent.com/HubSpot/pace/v1.0.2/pace.min.js"></script>
+    <link rel="stylesheet" href="https://github.com/HubSpot/pace/raw/master/themes/orange/pace-theme-flash.css">
+  
+  
+
+  <!-- PACE Progress Bar START -->
+
+  
+  <title>redis数据结构及对象（下） | 王老魔的代码备忘录</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  
+  <meta name="keywords" content="redis数据结构">
+  
+  
+  
+  
+  <meta name="description" content="&amp;emsp;&amp;emsp;在上一篇文章中分析了一下redis的底层数据结构，这一篇继续来分析redis的对象，redis的对象都会用到一到三个底层数据结构，redis会在不同的应用场景下采用相应合适的数据结构，以达到平衡时间效率和空间效率的目的。另外redis对于对象还会有类型检查，内存回收等操作以辅助系统的运行。">
+<meta name="keywords" content="redis,数据结构">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis数据结构及对象（下）">
+<meta property="og:url" content="http://yoursite.com/2019/04/25/Redis数据结构及对象（下）/index.html">
+<meta property="og:site_name" content="王老魔的代码备忘录">
+<meta property="og:description" content="&amp;emsp;&amp;emsp;在上一篇文章中分析了一下redis的底层数据结构，这一篇继续来分析redis的对象，redis的对象都会用到一到三个底层数据结构，redis会在不同的应用场景下采用相应合适的数据结构，以达到平衡时间效率和空间效率的目的。另外redis对于对象还会有类型检查，内存回收等操作以辅助系统的运行。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/12099675-4ca5e172b16cb34c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/12099675-8f5cd0de429d1686.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/600">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/12099675-9db48f3702a1782c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/12099675-ef224f36bed7d10f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/12099675-b486a0629d98a19e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/600">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/12099675-899b1de5c4d7a9a4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+<meta property="og:updated_time" content="2019-12-10T14:11:17.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redis数据结构及对象（下）">
+<meta name="twitter:description" content="&amp;emsp;&amp;emsp;在上一篇文章中分析了一下redis的底层数据结构，这一篇继续来分析redis的对象，redis的对象都会用到一到三个底层数据结构，redis会在不同的应用场景下采用相应合适的数据结构，以达到平衡时间效率和空间效率的目的。另外redis对于对象还会有类型检查，内存回收等操作以辅助系统的运行。">
+<meta name="twitter:image" content="https://upload-images.jianshu.io/upload_images/12099675-4ca5e172b16cb34c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+  
+    <link rel="alternate" href="/atom.xml" title="王老魔的代码备忘录" type="application/atom+xml">
+  
+  <link rel="icon" href="/css/images/favicon.jpg">
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Montserrat:700" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,300,300italic,400italic" rel="stylesheet" type="text/css">
+  <link href="https://cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet">
+  <style type="text/css">
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/9749f0/00000000000000000001008f/27/l?subset_id=2&fvd=n5) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/90cf9f/000000000000000000010091/27/l?subset_id=2&fvd=n7) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/8a5494/000000000000000000013365/27/l?subset_id=2&fvd=n4) format("woff2");font-weight:lighter;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/d337d8/000000000000000000010095/27/l?subset_id=2&fvd=i4) format("woff2");font-weight:400;font-style:italic;}</style>
+    
+  <link rel="stylesheet" id="athemes-headings-fonts-css" href="//fonts.googleapis.com/css?family=Yanone+Kaffeesatz%3A200%2C300%2C400%2C700&amp;ver=4.6.1" type="text/css" media="all">
+  <link rel="stylesheet" href="/css/style.css">
+
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/hiero.css">
+  <link rel="stylesheet" href="/css/glyphs.css">
+  
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/my.css">
+  <!-- Google Adsense -->
+  
+</head>
+</html>
+<script>
+var themeMenus = {};
+
+  themeMenus["/"] = "首页"; 
+
+  themeMenus["/archives"] = "归档"; 
+
+  themeMenus["/categories"] = "分类"; 
+
+  themeMenus["/tags"] = "标签"; 
+
+</script>
+
+
+  <body data-spy="scroll" data-target="#toc" data-offset="50">
+
+
+  <header id="allheader" class="site-header" role="banner">
+  <div class="clearfix container">
+      <div class="site-branding">
+
+          <h1 class="site-title">
+            
+              <a href="/" title="王老魔的代码备忘录" rel="home"> 王老魔的代码备忘录 </a>
+            
+          </h1>
+
+          
+            <div class="site-description">严肃的技术博客</div>
+          
+            
+          <nav id="main-navigation" class="main-navigation" role="navigation">
+            <a class="nav-open">Menu</a>
+            <a class="nav-close">Close</a>
+            <div class="clearfix sf-menu">
+
+              <ul id="main-nav" class="nmenu sf-js-enabled">
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/">首页</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/archives">归档</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/categories">分类</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/tags">标签</a> </li>
+                    
+              </ul>
+            </div>
+          </nav>
+
+
+      </div>
+  </div>
+</header>
+
+
+  <div id="originBgDiv" style="background: #fff; width: 100%;">
+
+      <div style="max-height:600px; overflow: hidden;  display: flex; display: -webkit-flex; align-items: center;">
+        <img id="originBg" width="100%" alt src>
+      </div>
+
+  </div>
+
+  <script>
+  function setAboutIMG(){
+      var imgUrls = "css/images/pose.jpg,https://source.unsplash.com/collection/954550/1920x1080".split(",");
+      var random = Math.floor((Math.random() * imgUrls.length ));
+      if (imgUrls[random].startsWith('http') || imgUrls[random].indexOf('://') >= 0) {
+        document.getElementById("originBg").src=imgUrls[random];
+      } else {
+        document.getElementById("originBg").src='/' + imgUrls[random];
+      }
+  }
+  bgDiv=document.getElementById("originBgDiv");
+  if(location.pathname.match('about')){
+    setAboutIMG();
+    bgDiv.style.display='block';
+  }else{
+    bgDiv.style.display='none';
+  }
+  </script>
+
+
+
+  <div id="container">
+    <div id="wrap">
+            
+      <div id="content" class="outer">
+        
+          <section id="main" style="float:none;"><article id="post-Redis数据结构及对象（下）" style="width: 66%; float:left;" class="article article-type-post" itemscope itemprop="blogPost">
+  <div id="articleInner" class="clearfix post-1016 post type-post status-publish format-standard has-post-thumbnail hentry category-template-2 category-uncategorized tag-codex tag-edge-case tag-featured-image tag-image tag-template">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="thumb" itemprop="name">
+      Redis数据结构及对象（下）
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-meta">
+      
+	Posted on <a href="/2019/04/25/Redis数据结构及对象（下）/" class="article-date">
+	  <time datetime="2019-04-25T05:51:10.000Z" itemprop="datePublished">四月 25, 2019</time>
+	</a>
+
+      
+	<span id="busuanzi_container_page_pv">
+	  本文总阅读量<span id="busuanzi_value_page_pv"></span>次
+	</span>
+
+    </div>
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p><img src="https://upload-images.jianshu.io/upload_images/12099675-4ca5e172b16cb34c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt><br>&emsp;&emsp;在上一篇文章中分析了一下redis的底层数据结构，这一篇继续来分析redis的对象，redis的对象都会用到一到三个底层数据结构，redis会在不同的应用场景下采用相应合适的数据结构，以达到平衡时间效率和空间效率的目的。另外redis对于对象还会有类型检查，内存回收等操作以辅助系统的运行。</p>
+<a id="more"></a>
+<h3 id="redisObject结构"><a href="#redisObject结构" class="headerlink" title="redisObject结构"></a>redisObject结构</h3><hr>
+<p>实际上每一个redis都是一个redisObject对象。redis对象的类型检查，内存回收，对象共享都是基于redisObject完成的，下面来看一下redisObject的结构。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">typedef struct redisObject &#123;</span><br><span class="line">    // 类型</span><br><span class="line">    unsigned type:4;</span><br><span class="line"></span><br><span class="line">    // 对齐位</span><br><span class="line">    unsigned notused:2;</span><br><span class="line"></span><br><span class="line">    // 编码方式</span><br><span class="line">    unsigned encoding:4;</span><br><span class="line"></span><br><span class="line">    // LRU 时间（相对于 server.lruclock）</span><br><span class="line">    unsigned lru:22;</span><br><span class="line"></span><br><span class="line">    // 引用计数</span><br><span class="line">    int refcount;</span><br><span class="line"></span><br><span class="line">    // 指向对象的值</span><br><span class="line">    void *ptr;</span><br><span class="line">&#125; robj;</span><br></pre></td></tr></table></figure></p>
+<ul>
+<li>type：对象类型。</li>
+<li>encoding: 对象编码方式。</li>
+<li>lru: 对象的最近使用时间，配合内存回收使用。</li>
+<li>refcount: 引用次数。配合内存回收使用。</li>
+<li>ptr: 指向具体底层数据结构的指针。</li>
+</ul>
+<p>redisObject是这样的结构主要是为了方便redis灵活的切换对象的编码及实时的回收redis内失效的内存，防止内存泄漏。</p>
+<h3 id="五大类型对象"><a href="#五大类型对象" class="headerlink" title="五大类型对象"></a>五大类型对象</h3><hr>
+<p>redis的五大数据对象分别是字符串、列表、集合、有序集合、哈希表，下面来分别介绍。</p>
+<h4 id="字符串"><a href="#字符串" class="headerlink" title="字符串"></a>字符串</h4><p>&emsp;&emsp;字符串对象一共有三种实现——整数、SDS（简单动态字符串）和embstr编码的SDS。<br>&emsp;&emsp;当字符串的长度小于44时，会使用embstr编码的SDS，大于44时会使用SDS。这里主要有两个问题，一是什么是embstr编码,二是为什么偏偏要选择44为临界点。<br><strong><1> embstr编码</1></strong><br>&emsp;&emsp;首先需要了解redisObject对象，如下图所示，一般的string的redisObject在内存中是以这样的形式存在的，需要分配两块空间，且要分配两次。<br><img src="https://upload-images.jianshu.io/upload_images/12099675-8f5cd0de429d1686.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/600" alt="string在内存中的图示"><br>&emsp;&emsp;而embstr编码在内存中的分布是这样的，直接和redisObject的头部连在一起，只有一块空间，且只用分配一次内存。所以相较于分开两块内存保存，embstr编码更能够发挥缓存的优势。<br><img src="https://upload-images.jianshu.io/upload_images/12099675-9db48f3702a1782c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="embstr"></p>
+<p><strong><2> 44字节</2></strong><br>&emsp;&emsp;从2.4版本开始，redis开始使用jemalloc内存分配器，jemalloc会分配8，16，32，64等字节的内存。embstr由redisObject和sds组成，其中redisObject有16个字节，如果embstr有44个字节，则sds的长度为44+3+1=48，加起来刚好为64字节。</p>
+<h4 id="列表"><a href="#列表" class="headerlink" title="列表"></a>列表</h4><p>&emsp;&emsp;当列表对象可以同时满足以下两个条件时， 列表对象使用 ziplist 编码：</p>
+<ul>
+<li>列表对象保存的所有字符串元素的长度都小于 64 字节；</li>
+<li>列表对象保存的元素数量小于 512 个；</li>
+</ul>
+<p>&emsp;&emsp;当这两个条件中的一个不满足时，将使用双端列表，而且这种变化是动态的。</p>
+<h4 id="哈希表"><a href="#哈希表" class="headerlink" title="哈希表"></a>哈希表</h4><p>&emsp;&emsp;当哈希表对象满足ziplist编码的条件时，会使用ziplist作为底层数据结构，当不满足条件时，会使用字典作为底层数据结构。<br><img src="https://upload-images.jianshu.io/upload_images/12099675-ef224f36bed7d10f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="哈希表ziplist斌吗"></p>
+<h4 id="集合"><a href="#集合" class="headerlink" title="集合"></a>集合</h4><p>&emsp;&emsp;当集合对象可以同时满足以下两个条件时， 对象使用 intset 编码：</p>
+<ul>
+<li>集合对象保存的所有元素都是整数值；</li>
+<li>集合对象保存的元素数量不超过 512 个；<br>&emsp;&emsp;当这两个条件中的一个不满足时，将使用hashtable，而且这种变化是动态的。<h4 id="有序集合"><a href="#有序集合" class="headerlink" title="有序集合"></a>有序集合</h4>&emsp;&emsp;当集合对象可以同时满足以下两个条件时， 对象使用 ziplist编码：</li>
+<li>列表对象保存的所有字符串元素的长度都小于 64 字节；</li>
+<li>列表对象保存的元素数量小于 512 个；<br><img src="https://upload-images.jianshu.io/upload_images/12099675-b486a0629d98a19e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/600" alt="有序集合ziplist编码"><br>&emsp;&emsp;当这两个条件中的一个不满足时，将使用跳跃表和hashtable两种数据结构。<br><img src="https://upload-images.jianshu.io/upload_images/12099675-899b1de5c4d7a9a4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="有序集合使用跳跃表和哈希表"><br>&emsp;&emsp;为什么要将数据多冗余出一份呢？其实单凭跳跃表或哈希表中的一个数据结构都可以完成有序集合的需求，但是只有使用哈希表时才能以O(1)的复杂度查找成员的分值，但是在使用zrange等范围性操作时，相比于使用跳跃表，会使得复杂度从O(N)，上升到O(NLogN)，而光使用跳跃表时，原本的以O(1)的复杂度查找成员的分值，会变成O(N)，为了这两种类型的操作都能有良好的表现，redis使用了两种数据结构来实现有序集合。</li>
+</ul>
+<h3 id="类型检查和命令多态"><a href="#类型检查和命令多态" class="headerlink" title="类型检查和命令多态"></a>类型检查和命令多态</h3><hr>
+<p>&emsp;&emsp;redis会对命令进行检查，以确保命令被正确的运用到正确的对象之上，当命令和对象不匹配时，会向客户端返回一个错误，例如当要对一个字符串执行自增操作时，就会返回一个错误。下表显示了这种匹配关系。</p>
+<blockquote>
+<p>SET 、 GET 、 APPEND 、 STRLEN 等命令只能对字符串键执行；<br>HDEL 、 HSET 、 HGET 、 HLEN 等命令只能对哈希键执行；<br>RPUSH 、 LPOP 、 LINSERT 、 LLEN 等命令只能对列表键执行；<br>SADD 、 SPOP 、 SINTER 、 SCARD 等命令只能对集合键执行；<br>ZADD 、 ZCARD 、 ZRANK 、 ZSCORE 等命令只能对有序集合键执行；</p>
+</blockquote>
+<p>&emsp;&emsp;上面说过，redis的对象都是redisObject，类型检查就是通过redisObject的type属性完成的。同时依赖于type属性，redis还可以实现命令的多态，即相同的命令作用的不同的对象上，执行不同的操作。例如当对整数型字符串执行append操作时，redis会首先将值转化为sds，之后执行append操作，而对sds型的字符串执行append操作时，则直接执行append操作。</p>
+<h3 id="内存回收"><a href="#内存回收" class="headerlink" title="内存回收"></a>内存回收</h3><hr>
+<p>&emsp;&emsp;redis采用了引用计数法来回收内存，在redisObject结构中有一个refCount属性便是为此服务，当创建对象时，refCount置为1，当对象被引用则refCount+1，不被引用则refCount-1，当refCount为0时，对象所占用的内存就会被回收。</p>
+<h3 id="内存共享"><a href="#内存共享" class="headerlink" title="内存共享"></a>内存共享</h3><hr>
+<p>&emsp;&emsp;redis 会在初始化服务器时， 创建一万个字符串对象， 这些对象包含了从 0 到 9999 的所有整数值， 当服务器需要用到值为 0到 9999 的字符串对象时， 服务器就会使用这些共享对象， 而不是新创建对象。</p>
+<h3 id="对象空转时间"><a href="#对象空转时间" class="headerlink" title="对象空转时间"></a>对象空转时间</h3><hr>
+<p>&emsp;&emsp;redisObject的lru属性记录了对象最后一次被命令程序访问的时间，此属性主要是为了配合redis的回收内存算法，例如volatile-lru 或者 allkeys-lru，当内存超过设置的maxmemory时，会配合回收算法计算要被回收的内存。</p>
+
+      
+    </div>
+    <footer class="entry-meta entry-footer">
+      
+	<span class="ico-folder"></span>
+    <a class="article-category-link" href="/categories/redis/">redis</a>
+
+      
+  <span class="ico-tags"></span>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/">redis</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/数据结构/">数据结构</a></li></ul>
+
+      
+            
+      
+        
+	<div id="comment">
+		<!-- 来必力City版安装代码 -->
+		<div id="lv-container" data-id="city" data-uid="MTAyMC8yOTQ4MS82MDQ5">
+		<script type="text/javascript">
+		   (function(d, s) {
+		       var j, e = d.getElementsByTagName(s)[0];
+
+		       if (typeof LivereTower === 'function') { return; }
+
+		       j = d.createElement(s);
+		       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+		       j.async = true;
+
+		       e.parentNode.insertBefore(j, e);
+		   })(document, 'script');
+		</script>
+		<noscript>为正常使用来必力评论功能请激活JavaScript</noscript>
+		</div>
+		<!-- City版安装代码已完成 -->
+	</div>
+
+
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/05/03/Paxos——分布式一致性算法/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">上一篇</strong>
+      <div class="article-nav-title">
+        
+          Paxos——分布式一致性算法
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/04/25/Redis数据结构及对象（上）/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">下一篇</strong>
+      <div class="article-nav-title">Redis数据结构及对象（上）</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+<!-- Table of Contents -->
+
+  <aside id="sidebar">
+    <div id="toc" class="toc-article" style="overflow-y: scroll; max-width: 28%;">
+    <strong class="toc-title">文章目录</strong>
+    
+      <ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#redisObject结构"><span class="nav-number">1.</span> <span class="nav-text">redisObject结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#五大类型对象"><span class="nav-number">2.</span> <span class="nav-text">五大类型对象</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#字符串"><span class="nav-number">2.1.</span> <span class="nav-text">字符串</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#列表"><span class="nav-number">2.2.</span> <span class="nav-text">列表</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#哈希表"><span class="nav-number">2.3.</span> <span class="nav-text">哈希表</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#集合"><span class="nav-number">2.4.</span> <span class="nav-text">集合</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#有序集合"><span class="nav-number">2.5.</span> <span class="nav-text">有序集合</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#类型检查和命令多态"><span class="nav-number">3.</span> <span class="nav-text">类型检查和命令多态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内存回收"><span class="nav-number">4.</span> <span class="nav-text">内存回收</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内存共享"><span class="nav-number">5.</span> <span class="nav-text">内存共享</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#对象空转时间"><span class="nav-number">6.</span> <span class="nav-text">对象空转时间</span></a></li></ol>
+    
+    </div>
+  </aside>
+</section>
+        
+      </div>
+      <footer id="footer" class="site-footer">
+  
+
+  <div class="clearfix container">
+      <div class="site-info">
+	      &copy; 2020 王老魔的代码备忘录 All Rights Reserved.
+          
+            <span id="busuanzi_container_site_uv">
+              本站访客数<span id="busuanzi_value_site_uv"></span>人次  
+              本站总访问量<span id="busuanzi_value_site_pv"></span>次
+            </span>
+          
+      </div>
+      <div class="site-credit">
+        Theme by <a href="https://github.com/iTimeTraveler/hexo-theme-hiero" target="_blank">hiero</a>
+      </div>
+  </div>
+</footer>
+
+
+<!-- min height -->
+
+<script>
+    var contentdiv = document.getElementById("content");
+
+    contentdiv.style.minHeight = document.body.offsetHeight - document.getElementById("allheader").offsetHeight - document.getElementById("footer").offsetHeight + "px";
+</script>
+
+<!-- Custome JS -->
+<script src="/js/my.js"></script>
+    </div>
+    <!-- <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">home</a>
+  
+    <a href="/archives" class="mobile-nav-link">archives</a>
+  
+    <a href="/categories" class="mobile-nav-link">categories</a>
+  
+    <a href="/tags" class="mobile-nav-link">tags</a>
+  
+</nav> -->
+    
+
+<!-- mathjax config similar to math.stackexchange -->
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.js"></script>
+
+
+<script src="/js/scripts.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="/js/main.js"></script>
+
+
+
+
+
+
+
+  <div style="display: none;">
+    <script src="https://s95.cnzz.com/z_stat.php?id=1260716016&web_id=1260716016" language="JavaScript"></script>
+  </div>
+
+
+
+	<script async src="https://dnqof95d40fo6.cloudfront.net/atw7f8.js">
+	</script>
+
+
+
+
+
+
+  </div>
+
+  <a id="rocket" href="#top" class=""></a>
+  <script type="text/javascript" src="/js/totop.js" async=""></script>
+</body>
+</html>
