@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+
+  <!-- PACE Progress Bar START -->
+  
+    <script src="https://raw.githubusercontent.com/HubSpot/pace/v1.0.2/pace.min.js"></script>
+    <link rel="stylesheet" href="https://github.com/HubSpot/pace/raw/master/themes/orange/pace-theme-flash.css">
+  
+  
+
+  <!-- PACE Progress Bar START -->
+
+  
+  <title>lru算法及其优化策略——算法篇 | 王老魔的闭关之地</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  
+  <meta name="keywords" content="算法">
+  
+  
+  
+  
+  <meta name="description" content="LFU算法及其优化策略——算法篇 前不久写了LRU算法系列文章，今天来介绍一下和LRU算法并驾齐驱的另一个算法——LFU。">
+<meta name="keywords" content="算法">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LRU算法及其优化策略——算法篇">
+<meta property="og:url" content="https://wanglaomo.github.io/blog-web/2020/01/25/LFU算法及其优化策略——算法篇/index.html">
+<meta property="og:site_name" content="王老魔的闭关之地">
+<meta property="og:description" content="LFU算法及其优化策略——算法篇 前不久写了LRU算法系列文章，今天来介绍一下和LRU算法并驾齐驱的另一个算法——LFU。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://i.loli.net/2020/01/25/r6pi34DBXkcGqMQ.png">
+<meta property="og:image" content="https://i.loli.net/2020/01/23/RZtGj3lvCA1peOI.png">
+<meta property="og:image" content="https://i.loli.net/2020/01/25/XRO37QkaM54Cqv9.png">
+<meta property="og:image" content="https://i.loli.net/2020/01/25/tCfN4PaHhBTLJkS.png">
+<meta property="og:updated_time" content="2020-01-25T05:16:44.825Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LRU算法及其优化策略——算法篇">
+<meta name="twitter:description" content="LFU算法及其优化策略——算法篇 前不久写了LRU算法系列文章，今天来介绍一下和LRU算法并驾齐驱的另一个算法——LFU。">
+<meta name="twitter:image" content="https://i.loli.net/2020/01/25/r6pi34DBXkcGqMQ.png">
+  
+    <link rel="alternate" href="/atom.xml" title="王老魔的闭关之地" type="application/atom+xml">
+  
+  <link rel="icon" href="/blog-web/css/images/favicon.jpg">
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Montserrat:700" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,300,300italic,400italic" rel="stylesheet" type="text/css">
+  <link href="https://cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet">
+  <style type="text/css">
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/9749f0/00000000000000000001008f/27/l?subset_id=2&fvd=n5) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/90cf9f/000000000000000000010091/27/l?subset_id=2&fvd=n7) format("woff2");font-weight:500;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/8a5494/000000000000000000013365/27/l?subset_id=2&fvd=n4) format("woff2");font-weight:lighter;font-style:normal;}
+    @font-face{font-family:futura-pt;src:url(https://use.typekit.net/af/d337d8/000000000000000000010095/27/l?subset_id=2&fvd=i4) format("woff2");font-weight:400;font-style:italic;}</style>
+    
+  <link rel="stylesheet" id="athemes-headings-fonts-css" href="//fonts.googleapis.com/css?family=Yanone+Kaffeesatz%3A200%2C300%2C400%2C700&amp;ver=4.6.1" type="text/css" media="all">
+  <link rel="stylesheet" href="/blog-web/css/style.css">
+
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/blog-web/css/hiero.css">
+  <link rel="stylesheet" href="/blog-web/css/glyphs.css">
+  
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/blog-web/css/my.css">
+  <!-- Google Adsense -->
+  
+</head>
+</html>
+<script>
+var themeMenus = {};
+
+  themeMenus["/blog-web/"] = "首页"; 
+
+  themeMenus["/blog-web/archives"] = "归档"; 
+
+  themeMenus["/blog-web/categories"] = "分类"; 
+
+  themeMenus["/blog-web/tags"] = "标签"; 
+
+</script>
+
+
+  <body data-spy="scroll" data-target="#toc" data-offset="50">
+
+
+  <header id="allheader" class="site-header" role="banner">
+  <div class="clearfix container">
+      <div class="site-branding">
+
+          <h1 class="site-title">
+            
+              <a href="/blog-web/" title="王老魔的闭关之地" rel="home"> 王老魔的闭关之地 </a>
+            
+          </h1>
+
+          
+            <div class="site-description">严肃的技术博客</div>
+          
+            
+          <nav id="main-navigation" class="main-navigation" role="navigation">
+            <a class="nav-open">Menu</a>
+            <a class="nav-close">Close</a>
+            <div class="clearfix sf-menu">
+
+              <ul id="main-nav" class="nmenu sf-js-enabled">
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/blog-web/">首页</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/blog-web/archives">归档</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/blog-web/categories">分类</a> </li>
+                    
+                      <li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-home menu-item-1663"> <a class href="/blog-web/tags">标签</a> </li>
+                    
+              </ul>
+            </div>
+          </nav>
+
+
+      </div>
+  </div>
+</header>
+
+
+  <div id="originBgDiv" style="background: #fff; width: 100%;">
+
+      <div style="max-height:600px; overflow: hidden;  display: flex; display: -webkit-flex; align-items: center;">
+        <img id="originBg" width="100%" alt src>
+      </div>
+
+  </div>
+
+  <script>
+  function setAboutIMG(){
+      var imgUrls = "css/images/pose.jpg,https://source.unsplash.com/collection/954550/1920x1080".split(",");
+      var random = Math.floor((Math.random() * imgUrls.length ));
+      if (imgUrls[random].startsWith('http') || imgUrls[random].indexOf('://') >= 0) {
+        document.getElementById("originBg").src=imgUrls[random];
+      } else {
+        document.getElementById("originBg").src='/blog-web/' + imgUrls[random];
+      }
+  }
+  bgDiv=document.getElementById("originBgDiv");
+  if(location.pathname.match('about')){
+    setAboutIMG();
+    bgDiv.style.display='block';
+  }else{
+    bgDiv.style.display='none';
+  }
+  </script>
+
+
+
+  <div id="container">
+    <div id="wrap">
+            
+      <div id="content" class="outer">
+        
+          <section id="main" style="float:none;"><article id="post-LFU算法及其优化策略——算法篇" style="width: 66%; float:left;" class="article article-type-post" itemscope itemprop="blogPost">
+  <div id="articleInner" class="clearfix post-1016 post type-post status-publish format-standard has-post-thumbnail hentry category-template-2 category-uncategorized tag-codex tag-edge-case tag-featured-image tag-image tag-template">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="thumb" itemprop="name">
+      LRU算法及其优化策略——算法篇
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-meta">
+      
+	Posted on <a href="/blog-web/2020/01/25/LFU算法及其优化策略——算法篇/" class="article-date">
+	  <time datetime="2020-01-25T05:15:00.000Z" itemprop="datePublished">一月 25, 2020</time>
+	</a>
+
+      
+	<span id="busuanzi_container_page_pv">
+	  本文总阅读量<span id="busuanzi_value_page_pv"></span>次
+	</span>
+
+    </div>
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="LFU算法及其优化策略——算法篇"><a href="#LFU算法及其优化策略——算法篇" class="headerlink" title="LFU算法及其优化策略——算法篇"></a>LFU算法及其优化策略——算法篇</h1><p><img src="https://i.loli.net/2020/01/25/r6pi34DBXkcGqMQ.png" alt="LFU算法及其优化策略——算法篇"></p>
+<p>前不久写了LRU算法系列文章，今天来介绍一下和LRU算法并驾齐驱的另一个算法——LFU。<br><a id="more"></a><br>LFU全称是最不经常使用算法（Least Frequently Used），LFU算法的基本思想和所有的缓存算法一样，都是基于locality假设（局部性原理）：</p>
+<blockquote>
+<p>如果一个信息项正在被访问，那么在近期它很可能还会被再次访问。</p>
+</blockquote>
+<p>LFU是基于这种思想进行设计：<strong>一定时期内被访问次数最少的页，在将来被访问到的几率也是最小的</strong>。</p>
+<p>相比于LRU（Least Recently Use）算法，LFU更加注重于使用的频率。</p>
+<h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>LFU将数据和数据的访问频次保存在一个容量有限的容器中，当访问一个数据时：</p>
+<ol>
+<li>该数据在容器中，则将该数据的访问频次加1。</li>
+<li>该数据不在容器中，则将该数据加入到容器中，且访问频次为1。</li>
+</ol>
+<p>当数据量达到容器的限制后，会剔除掉访问频次最低的数据。下图是一个简易的LFU算法示意图。</p>
+<p><img src="https://i.loli.net/2020/01/23/RZtGj3lvCA1peOI.png" alt="lfu-algorithm.png"></p>
+<p>上图中的LRU容器是一个链表，会动态地根据访问频次调整数据在链表中的位置，方便进行数据的淘汰，可以看到，在第四步时，因为需要插入数据F，而淘汰了数据E。</p>
+<h2 id="LFU实现"><a href="#LFU实现" class="headerlink" title="LFU实现"></a>LFU实现</h2><p>LFU的实现一共有三种方案，但是思想都是一样的，下面我们先来看最简单的一种实现。</p>
+<h3 id="基于双端链表-哈希表"><a href="#基于双端链表-哈希表" class="headerlink" title="基于双端链表+哈希表"></a>基于双端链表+哈希表</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LFUCache</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> Node head; <span class="comment">// 头结点 简化null判断</span></span><br><span class="line">    <span class="keyword">private</span> Node tail; <span class="comment">// 尾结点 简化null判断</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> capacity; <span class="comment">// 容量限制</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> size; <span class="comment">// 当前数据个数</span></span><br><span class="line">    <span class="keyword">private</span> Map&lt;Integer, Node&gt; map; <span class="comment">// key和数据的映射</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">LFUCache</span><span class="params">(<span class="keyword">int</span> capacity)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.capacity = capacity;</span><br><span class="line">        <span class="keyword">this</span>.size = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">this</span>.head = <span class="keyword">new</span> Node(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">        <span class="keyword">this</span>.tail = <span class="keyword">new</span> Node(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">        <span class="keyword">this</span>.head.next = tail;</span><br><span class="line">        <span class="keyword">this</span>.tail.pre = head;</span><br><span class="line">        <span class="keyword">this</span>.map = <span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">get</span><span class="params">(<span class="keyword">int</span> key)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 从哈希表中判断数据是否存在</span></span><br><span class="line">        Node node = map.get(key);</span><br><span class="line">        <span class="keyword">if</span> (node == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 如果存在则增加该数据的访问频次</span></span><br><span class="line">        freqPlus(node);</span><br><span class="line">        <span class="keyword">return</span> node.value;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">put</span><span class="params">(<span class="keyword">int</span> key, <span class="keyword">int</span> value)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (capacity &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        Node node = map.get(key);</span><br><span class="line">        <span class="keyword">if</span> (node != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="comment">// 如果存在则增加该数据的访问频次</span></span><br><span class="line">            node.value = value;</span><br><span class="line">            freqPlus(node);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 淘汰数据</span></span><br><span class="line">            eliminate();</span><br><span class="line">            Node newNode = <span class="keyword">new</span> Node(key, value, <span class="number">0</span>);</span><br><span class="line">            map.put(key, newNode);</span><br><span class="line">            size++;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 将新数据插入到末尾</span></span><br><span class="line">            Node tailPre = tail.pre;</span><br><span class="line">            tail.pre = newNode;</span><br><span class="line">            newNode.pre = tailPre;</span><br><span class="line">            newNode.next = tail;</span><br><span class="line">            tailPre.next = newNode;</span><br><span class="line">            <span class="comment">// 增加访问频次</span></span><br><span class="line">            freqPlus(newNode);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">freqPlus</span><span class="params">(Node node)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        node.frequency++;</span><br><span class="line">        Node temp = node.pre;</span><br><span class="line">        <span class="keyword">int</span> freq = node.frequency;</span><br><span class="line">        <span class="keyword">while</span>(temp != <span class="keyword">null</span>) &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 使用大于号的原因是将最后访问的数据排在旧数据之前</span></span><br><span class="line">            <span class="keyword">if</span> (temp.frequency &gt; freq  || temp == head) &#123;</span><br><span class="line">                node.pre.next = node.next;</span><br><span class="line">                node.next.pre = node.pre;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 根据访问频次排序调整位置</span></span><br><span class="line">                Node tempNext = temp.next;</span><br><span class="line">                temp.next = node;</span><br><span class="line">                tempNext.pre = node;</span><br><span class="line">                node.next = tempNext;</span><br><span class="line">                node.pre = temp;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            temp = temp.pre;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">eliminate</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (size &lt; capacity) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 从尾结点的pre节点之间删除即可</span></span><br><span class="line">        Node last = tail.pre;</span><br><span class="line">        last.pre.next = tail;</span><br><span class="line">        tail.pre = last.pre;</span><br><span class="line">        map.remove(last.key);</span><br><span class="line">        size--;</span><br><span class="line">        last = <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Node</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> key;</span><br><span class="line">    <span class="keyword">int</span> value;</span><br><span class="line">    <span class="keyword">int</span> frequency;</span><br><span class="line"></span><br><span class="line">    Node pre;</span><br><span class="line">    Node next;</span><br><span class="line"></span><br><span class="line">    Node(<span class="keyword">int</span> key, <span class="keyword">int</span> value, <span class="keyword">int</span> frequency) &#123;</span><br><span class="line">        <span class="keyword">this</span>.key = key;</span><br><span class="line">        <span class="keyword">this</span>.value = value;</span><br><span class="line">        <span class="keyword">this</span>.frequency = frequency;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>整个逻辑还是比较清晰的，注意小心的操纵<code>pre</code>（前置节点）、<code>next</code>（后置节点）这两个指针即可，同时注意通过<code>freqPlus()</code>方法保证链表中的数据是按照访问频次排序的。</p>
+<p>也正是因为freqPlus这个方法，导致<code>put()</code>和<code>get()</code>操作的时间复杂度都为O(N)。</p>
+<h3 id="基于双哈希表实现"><a href="#基于双哈希表实现" class="headerlink" title="基于双哈希表实现"></a>基于双哈希表实现</h3><p>为了进一步降低上一种方案的时间复杂度，我们可以通过双哈希表来实现。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">LFUCache</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> capacity; <span class="comment">// 容量限制</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> size;     <span class="comment">// 当前数据个数</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> minFreq;  <span class="comment">// 当前最小频率</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> Map&lt;Integer, Node&gt; map; <span class="comment">// key和数据的映射</span></span><br><span class="line">    <span class="keyword">private</span> Map&lt;Integer, LinkedHashSet&lt;Node&gt;&gt; freqMap; <span class="comment">// 数据频率和对应数据组成的链表</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">LFUCache</span><span class="params">(<span class="keyword">int</span> capacity)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.capacity = capacity;</span><br><span class="line">        <span class="keyword">this</span>.size = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">this</span>.minFreq = <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">this</span>.map = <span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line">        <span class="keyword">this</span>.freqMap = <span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">get</span><span class="params">(<span class="keyword">int</span> key)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        Node node = map.get(key);</span><br><span class="line">        <span class="keyword">if</span> (node == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">	    <span class="comment">// 增加数据的访问频率</span></span><br><span class="line">        freqPlus(node);</span><br><span class="line">        <span class="keyword">return</span> node.value;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">put</span><span class="params">(<span class="keyword">int</span> key, <span class="keyword">int</span> value)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (capacity &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        Node node = map.get(key);</span><br><span class="line">        <span class="keyword">if</span> (node != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="comment">// 如果存在则增加该数据的访问频次</span></span><br><span class="line">            node.value = value;</span><br><span class="line">            freqPlus(node);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 淘汰数据</span></span><br><span class="line">            eliminate();</span><br><span class="line">            <span class="comment">// 新增数据并放到数据频率为1的数据链表中</span></span><br><span class="line">            Node newNode = <span class="keyword">new</span> Node(key, value);</span><br><span class="line">            map.put(key, newNode);</span><br><span class="line">            LinkedHashSet&lt;Node&gt; set = freqMap.get(<span class="number">1</span>);</span><br><span class="line">            <span class="keyword">if</span> (set == <span class="keyword">null</span>) &#123;</span><br><span class="line">                set = <span class="keyword">new</span> LinkedHashSet&lt;&gt;();</span><br><span class="line">                freqMap.put(<span class="number">1</span>, set);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            set.add(newNode);</span><br><span class="line">            minFreq = <span class="number">1</span>;</span><br><span class="line">            size++;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">eliminate</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (size &lt; capacity) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        LinkedHashSet&lt;Node&gt; set = freqMap.get(minFreq);</span><br><span class="line">        Node node = set.iterator().next();</span><br><span class="line">        set.remove(node);</span><br><span class="line">        map.remove(node.key);</span><br><span class="line"></span><br><span class="line">        size--;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">freqPlus</span><span class="params">(Node node)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">int</span> frequency = node.frequency;</span><br><span class="line">        LinkedHashSet&lt;Node&gt; oldSet = freqMap.get(frequency);</span><br><span class="line">        oldSet.remove(node);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 更新最小数据频率</span></span><br><span class="line">        <span class="keyword">if</span> (minFreq == frequency &amp;&amp; oldSet.isEmpty()) &#123;</span><br><span class="line">            minFreq++;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        frequency++;</span><br><span class="line">        node.frequency++;</span><br><span class="line">        LinkedHashSet&lt;Node&gt; set = freqMap.get(frequency);</span><br><span class="line">        <span class="keyword">if</span> (set == <span class="keyword">null</span>) &#123;</span><br><span class="line">            set = <span class="keyword">new</span> LinkedHashSet&lt;&gt;();</span><br><span class="line">            freqMap.put(frequency, set);</span><br><span class="line">        &#125;</span><br><span class="line">        set.add(node);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Node</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> key;</span><br><span class="line">    <span class="keyword">int</span> value;</span><br><span class="line">    <span class="keyword">int</span> frequency = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    Node(<span class="keyword">int</span> key, <span class="keyword">int</span> value) &#123;</span><br><span class="line">        <span class="keyword">this</span>.key = key;</span><br><span class="line">        <span class="keyword">this</span>.value = value;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>基于JDK的<code>LinkedHashSet</code>这个类来模拟链表，我们可以将<code>put()</code>和<code>get()</code>操作的时间复杂度降低到O(1)级别。这套方案的实现来自于这篇论文<a href="http://dhruvbird.com/lfu.pdf" target="_blank" rel="noopener">《An O(1) algorithm for implementing the LFU cache eviction scheme》</a>，下面是该论文中的一个示意图，可以辅助理解。</p>
+<p><img src="https://i.loli.net/2020/01/25/XRO37QkaM54Cqv9.png" alt="image.png"></p>
+<p><img src="https://i.loli.net/2020/01/25/tCfN4PaHhBTLJkS.png" alt="image.png"></p>
+<h2 id="LFU相比于LRU的优劣"><a href="#LFU相比于LRU的优劣" class="headerlink" title="LFU相比于LRU的优劣"></a>LFU相比于LRU的优劣</h2><p>区别：</p>
+<p>   LFU是基于访问频次的模式，而LRU是基于访问时间的模式。</p>
+<p>优势：</p>
+<p>   在数据访问符合正态分布时，相比于LRU算法，LFU算法的缓存命中率会高一些。</p>
+<p>劣势：</p>
+<ol>
+<li>LFU的复杂度要比LRU更高一些。</li>
+<li>需要维护数据的访问频次，每次访问都需要更新。</li>
+<li>早期的数据相比于后期的数据更容易被缓存下来，导致后期的数据很难被缓存。</li>
+<li>新加入缓存的数据很容易被剔除，像是缓存的末端发生“抖动”。</li>
+</ol>
+<h2 id="LFU算法优化"><a href="#LFU算法优化" class="headerlink" title="LFU算法优化"></a>LFU算法优化</h2><p> 从上面的优劣分析中我们可以发现，优化LFU算法可以从下面几点入手：</p>
+<ol>
+<li>更加紧凑的数据结构，避免维护访问频次的高消耗。</li>
+<li>避免早期的热点数据一直占据缓存，即LFU算法也需有一些访问时间模式的特性。</li>
+<li>消除缓存末端的抖动。</li>
+</ol>
+<p>具体的优化方案我会在之后的文章中结合具体实例进行介绍。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本文介绍了基本的LFU算法，以及它的O(N)级别和O(1)级别的具体实现。后面进行了LRU算法和LFU算法的优劣分析，并得出了LFU算法的优化方向。</p>
+
+      
+    </div>
+    <footer class="entry-meta entry-footer">
+      
+	<span class="ico-folder"></span>
+    <a class="article-category-link" href="/blog-web/categories/算法/">算法</a>
+
+      
+  <span class="ico-tags"></span>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/blog-web/tags/算法/">算法</a></li></ul>
+
+      
+            
+      
+        
+	<div id="comment">
+		<!-- 来必力City版安装代码 -->
+		<div id="lv-container" data-id="city" data-uid="MTAyMC8yOTQ4MS82MDQ5">
+		<script type="text/javascript">
+		   (function(d, s) {
+		       var j, e = d.getElementsByTagName(s)[0];
+
+		       if (typeof LivereTower === 'function') { return; }
+
+		       j = d.createElement(s);
+		       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+		       j.async = true;
+
+		       e.parentNode.insertBefore(j, e);
+		   })(document, 'script');
+		</script>
+		<noscript>为正常使用来必力评论功能请激活JavaScript</noscript>
+		</div>
+		<!-- City版安装代码已完成 -->
+	</div>
+
+
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/blog-web/2020/01/18/LRU算法及其优化策略——Mysql篇/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">下一篇</strong>
+      <div class="article-nav-title">LRU算法及其优化策略——Mysql篇</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+<!-- Table of Contents -->
+
+  <aside id="sidebar">
+    <div id="toc" class="toc-article" style="overflow-y: scroll; max-width: 28%;">
+    <strong class="toc-title">文章目录</strong>
+    
+      <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#LFU算法及其优化策略——算法篇"><span class="nav-number">1.</span> <span class="nav-text">LFU算法及其优化策略——算法篇</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#原理"><span class="nav-number">1.1.</span> <span class="nav-text">原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LFU实现"><span class="nav-number">1.2.</span> <span class="nav-text">LFU实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#基于双端链表-哈希表"><span class="nav-number">1.2.1.</span> <span class="nav-text">基于双端链表+哈希表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#基于双哈希表实现"><span class="nav-number">1.2.2.</span> <span class="nav-text">基于双哈希表实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LFU相比于LRU的优劣"><span class="nav-number">1.3.</span> <span class="nav-text">LFU相比于LRU的优劣</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LFU算法优化"><span class="nav-number">1.4.</span> <span class="nav-text">LFU算法优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">1.5.</span> <span class="nav-text">总结</span></a></li></ol></li></ol>
+    
+    </div>
+  </aside>
+</section>
+        
+      </div>
+      <footer id="footer" class="site-footer">
+  
+
+  <div class="clearfix container">
+      <div class="site-info">
+	      &copy; 2020 王老魔的闭关之地 All Rights Reserved.
+          
+            <span id="busuanzi_container_site_uv">
+              本站访客数<span id="busuanzi_value_site_uv"></span>人次  
+              本站总访问量<span id="busuanzi_value_site_pv"></span>次
+            </span>
+          
+      </div>
+      <div class="site-credit">
+        Theme by <a href="https://github.com/iTimeTraveler/hexo-theme-hiero" target="_blank">hiero</a>
+      </div>
+  </div>
+</footer>
+
+
+<!-- min height -->
+
+<script>
+    var contentdiv = document.getElementById("content");
+
+    contentdiv.style.minHeight = document.body.offsetHeight - document.getElementById("allheader").offsetHeight - document.getElementById("footer").offsetHeight + "px";
+</script>
+
+<!-- Custome JS -->
+<script src="/blog-web/js/my.js"></script>
+    </div>
+    <!-- <nav id="mobile-nav">
+  
+    <a href="/blog-web/" class="mobile-nav-link">home</a>
+  
+    <a href="/blog-web/archives" class="mobile-nav-link">archives</a>
+  
+    <a href="/blog-web/categories" class="mobile-nav-link">categories</a>
+  
+    <a href="/blog-web/tags" class="mobile-nav-link">tags</a>
+  
+</nav> -->
+    
+
+<!-- mathjax config similar to math.stackexchange -->
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.js"></script>
+
+
+<script src="/blog-web/js/scripts.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="/blog-web/js/main.js"></script>
+
+
+
+
+
+
+
+  <div style="display: none;">
+    <script src="https://s95.cnzz.com/z_stat.php?id=1260716016&web_id=1260716016" language="JavaScript"></script>
+  </div>
+
+
+
+	<script async src="https://dnqof95d40fo6.cloudfront.net/atw7f8.js">
+	</script>
+
+
+
+
+
+
+  </div>
+
+  <a id="rocket" href="#top" class=""></a>
+  <script type="text/javascript" src="/js/totop.js" async=""></script>
+</body>
+</html>
